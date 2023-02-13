@@ -1,0 +1,15 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+gas_reports = ["KyotoPay", "Deployer"]
+remappings = ["ds-test/=lib/ds-test/src", "@openzeppelin/=lib/openzeppelin-contracts/", "@uniswap=lib/uniswap", "@chainlink=lib/chainlink"]
+
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+goerli = "${GOERLI_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_MAINNET_KEY}" }
+goerli = { key = "${ETHERSCAN_MAINNET_KEY}", chain = "goerli" }
