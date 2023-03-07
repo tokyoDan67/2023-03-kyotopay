@@ -2,13 +2,14 @@
 pragma solidity ^0.8.17;
 
 /// @title KyotoPay
-/// Version 1.0 
+/// Version 1.1 
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoPay} from "./interfaces/IKyotoPay.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
@@ -27,7 +28,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
     uint256 public adminFee;
 
     // mapping for prferences
-    mapping(address => Preferences) public recipientPreferences;
+    mapping(address => DataTypes.Preferences) public recipientPreferences;
     mapping(address => bool) public whitelistedInputTokens;
     mapping(address => bool) public whitelistedOutputTokens;
 
@@ -49,7 +50,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
      *  - '_preferences.slippageAllowed' is not 0% (i.e. >= 10,000) or 100% (i.e. 0)
      *  - '_preferences.tokenAddress' is a valid output token found in whitelistedOutputTokens
      */
-    function setPreferences(Preferences calldata _preferences) external whenNotPaused {
+    function setPreferences(DataTypes.Preferences calldata _preferences) external whenNotPaused {
         if ((_preferences.slippageAllowed == 0) || (_preferences.slippageAllowed >= DECIMALS)) {
             revert InvalidRecipientSlippage();
         }
@@ -140,7 +141,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
         bytes32 _data
     ) internal {
         // Cache the recipient's preferences
-        Preferences memory _preferences = recipientPreferences[_recipient];
+        DataTypes.Preferences memory _preferences = recipientPreferences[_recipient];
         bool areValidPreferences = _validatePreferences(_preferences);
 
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
@@ -213,7 +214,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
      * @dev validates recipient's preferences.  Does not revert.
      * @return true when valid preferences, false when invalid
      */
-    function _validatePreferences(Preferences memory _preferences) internal view returns (bool) {
+    function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
         return ((_preferences.slippageAllowed != 0) && (whitelistedOutputTokens[_preferences.tokenAddress]));
     }
 

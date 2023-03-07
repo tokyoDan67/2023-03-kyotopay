@@ -4,12 +4,9 @@ pragma solidity ^0.8.17;
 /// @title Interface for KyotoPay
 /// Version 1.0
 
-interface IKyotoPay {
+import {DataTypes} from "../libraries/DataTypes.sol";
 
-    struct Preferences {
-        address tokenAddress;
-        uint96 slippageAllowed;
-    }
+interface IKyotoPay {
 
     /**
      *  Invalid value(s) for arguments 'amountIn' or '_amountOut'.  '_amountIn' is zero or '_amountOut' is zero
@@ -58,7 +55,7 @@ interface IKyotoPay {
      *  - '_preferences.slippageAllowed' is not 0% (i.e. >= 10,000) or 100% (i.e. 0)
      *  - '_preferences.tokenAddress' is a valid output token found in whitelistedOutputTokens
      */
-    function setPreferences(Preferences calldata _preferences) external;
+    function setPreferences(DataTypes.Preferences calldata _preferences) external;
 
     /**
      * Pays a recipient in their preferred token from a given input token

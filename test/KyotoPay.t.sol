@@ -2,17 +2,19 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
-import {KyotoPay} from "../src/KyotoPay.sol";
-import {IKyotoPay} from "../src/interfaces/IKyotoPay.sol";
-import {IWETH9} from "../src/interfaces/IWETH9.sol";
-import {Fork} from "./reference/Fork.sol";
-import {Helper} from "./reference/Helper.sol";
-import {KyotoPayWrapper} from "./reference/KyotoPayWrapper.sol";
-import {MockERC20} from "./reference/MockERC20.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {DataTypes} from "../src/libraries/DataTypes.sol";
+import {Fork} from "./reference/Fork.sol";
+import {Helper} from "./reference/Helper.sol";
+import {IKyotoPay} from "../src/interfaces/IKyotoPay.sol";
+import {IWETH9} from "../src/interfaces/IWETH9.sol";
+import {KyotoPay} from "../src/KyotoPay.sol";
+import {KyotoPayWrapper} from "./reference/KyotoPayWrapper.sol";
+import {MockERC20} from "./reference/MockERC20.sol";
+
 
 /*************************
  *
@@ -66,8 +68,8 @@ contract Setters is Test, Helper {
     function test_SetPreferences() public {
         uint96 _validSlippage = 100;
 
-        IKyotoPay.Preferences memory _validPreferences =
-            IKyotoPay.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
+        DataTypes.Preferences memory _validPreferences =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
 
         vm.prank(RANDOM_USER);
         kyotoPayContract.setPreferences(_validPreferences);
@@ -79,8 +81,8 @@ contract Setters is Test, Helper {
     }
 
     function test_SetPreferences_RevertIf_SlippagePreferenceZero() public {
-        IKyotoPay.Preferences memory _invalidSlippage =
-            IKyotoPay.Preferences({tokenAddress: mockERC20, slippageAllowed: 0});
+        DataTypes.Preferences memory _invalidSlippage =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: 0});
 
         vm.startPrank(RANDOM_USER);
 
@@ -94,8 +96,8 @@ contract Setters is Test, Helper {
         uint256 decimals256 = kyotoPayContract.DECIMALS();
         uint96 invalidSlippage = uint96(decimals256);
 
-        IKyotoPay.Preferences memory _invalidSlippage =
-            IKyotoPay.Preferences({tokenAddress: mockERC20, slippageAllowed: invalidSlippage});
+        DataTypes.Preferences memory _invalidSlippage =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: invalidSlippage});
 
         vm.startPrank(RANDOM_USER);
 
@@ -109,8 +111,8 @@ contract Setters is Test, Helper {
         uint256 decimals256 = kyotoPayContract.DECIMALS();
         uint96 invalidSlippage = uint96(decimals256 + 1);
 
-        IKyotoPay.Preferences memory _invalidSlippage =
-            IKyotoPay.Preferences({tokenAddress: mockERC20, slippageAllowed: invalidSlippage});
+        DataTypes.Preferences memory _invalidSlippage =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: invalidSlippage});
 
         vm.startPrank(RANDOM_USER);
 
@@ -126,8 +128,8 @@ contract Setters is Test, Helper {
     function test_SetPreference_RevertIf_InvalidTokenPreference() public {
         assertFalse(kyotoPayContract.whitelistedOutputTokens(DAI_ADDRESS));
 
-        IKyotoPay.Preferences memory _invalidToken =
-            IKyotoPay.Preferences({tokenAddress: DAI_ADDRESS, slippageAllowed: 100});
+        DataTypes.Preferences memory _invalidToken =
+            DataTypes.Preferences({tokenAddress: DAI_ADDRESS, slippageAllowed: 100});
 
         vm.startPrank(RANDOM_USER);
 
@@ -331,22 +333,22 @@ contract InternalFunctions is Test, Helper {
     }
 
     function test_validatePreferences() public {
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 100});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 100});
 
         assertTrue(kyotoPayWrapper.validatePreferences(_preferences));
     }
 
     function test_validatePreferences_RevertIf_SlippageZero() public {
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 0});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 0});
 
         assertFalse(kyotoPayWrapper.validatePreferences(_preferences));
     }
 
     function test_validatePreferences_RevertIf_TokenNotWhitelisted() public {
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 100});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 100});
 
         assertFalse(kyotoPayWrapper.validatePreferences(_preferences));
     }
@@ -621,8 +623,8 @@ contract Pay is Fork {
         uint256 _amountIn = 10_000 * (10 ** USDC_DECIMALS);
 
         // Set slippage to zero...
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -667,8 +669,8 @@ contract Pay is Fork {
         // Amount in is ~$48,000 of ether...
         uint256 _amountIn = 30 ether;
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -808,8 +810,8 @@ contract Pay is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 100_000_000;
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -854,8 +856,8 @@ contract Pay is Fork {
         // Amount in is $10,000 of USDC...
         uint256 _amountIn = 10_000 * (10 ** USDC_DECIMALS);
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -915,8 +917,8 @@ contract Pay is Fork {
         // Amount in is ~$22,000 of WBTC
         uint256 _amountIn = 1 * (10 ** WBTC_DECIMALS);
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_800});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_800});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -1020,8 +1022,8 @@ contract Pay is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 10 ether;
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
@@ -1069,8 +1071,8 @@ contract Pay is Fork {
         // Amount in is ~$16,000 of ether...
         uint256 _amountIn = 10 ether;
 
-        IKyotoPay.Preferences memory _preferences =
-            IKyotoPay.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoPay.setPreferences(_preferences);
