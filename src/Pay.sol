@@ -5,58 +5,38 @@ pragma solidity ^0.8.17;
 /// Version 1.1 
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
-import {IKyotoPay} from "./interfaces/IKyotoPay.sol";
+import {HubOwnable} from "./base/HubOwnable.sol";
+import {IPay} from "./interfaces/IPay.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
-contract KyotoPay is Ownable, Pausable, IKyotoPay {
+// To Do: Add a receive function
+
+contract Pay is Ownable, Pausable, IPay {
     using SafeERC20 for IERC20;
 
-    uint256 public constant DECIMALS = 10_000;
-
+    uint256 private constant DECIMALS = 10_000;
     // MAX_ADMIN_FEE is denominated in DECIMALs.  I.e. 500 = 5%
-    uint256 public constant MAX_ADMIN_FEE = 500;
+    uint256 private constant MAX_ADMIN_FEE = 500;
 
-    address public immutable uniswapSwapRouterAddress;
-    address public immutable wethAddress;
+    address public immutable UNISWAP_SWAP_ROUTER_ADDRESS;
+    address public immutable WETH_ADDRESS;
+    IPreferences public immutable PREFERENCES_CONTRACT;
+
 
     // adminFee is denominated in DECIMALS.  For example, a value for fee of 200 = 2%
     uint256 public adminFee;
-
-    // mapping for prferences
-    mapping(address => DataTypes.Preferences) public recipientPreferences;
-    mapping(address => bool) public whitelistedInputTokens;
-    mapping(address => bool) public whitelistedOutputTokens;
-
     constructor(uint256 _adminFee, address _uniswapSwapRouterAddress, address _wethAddress) {
         if (_adminFee > MAX_ADMIN_FEE) revert InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert ZeroAddress();
         if (_wethAddress == address(0)) revert ZeroAddress();
 
         adminFee = _adminFee;
-        uniswapSwapRouterAddress = _uniswapSwapRouterAddress;
-        wethAddress = _wethAddress;
-    }
-
-    /**
-     * @notice sets the sender's receiving preferences. 
-     * @param _preferences the sender's given preferences
-     * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage
-     * Requirements:
-     *  - '_preferences.slippageAllowed' is not 0% (i.e. >= 10,000) or 100% (i.e. 0)
-     *  - '_preferences.tokenAddress' is a valid output token found in whitelistedOutputTokens
-     */
-    function setPreferences(DataTypes.Preferences calldata _preferences) external whenNotPaused {
-        if ((_preferences.slippageAllowed == 0) || (_preferences.slippageAllowed >= DECIMALS)) {
-            revert InvalidRecipientSlippage();
-        }
-        if (!(whitelistedOutputTokens[_preferences.tokenAddress])) revert InvalidRecipientToken();
-
-        recipientPreferences[msg.sender] = _preferences;
+        UNISWAP_SWAP_ROUTER_ADDRESS = _uniswapSwapRouterAddress;
+        WETH_ADDRESS = _wethAddress;
     }
 
     /**
@@ -112,7 +92,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
     function payEth(address _recipient, uint256 _amountOut, uint24 _uniFee, bytes32 _data) external payable whenNotPaused {
         // Cache vars
         uint256 _msgValue = msg.value;
-        address _wethAddress = wethAddress;
+        address _wethAddress = WETH_ADDRESS;
 
         _validateInputParams(_recipient, _wethAddress, _msgValue, _amountOut, _uniFee);
 
@@ -174,7 +154,9 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
         uint24 _uniFee,
         uint96 _slippageAllowed
     ) internal returns (uint256) {
-        IERC20(_tokenIn).safeApprove(uniswapSwapRouterAddress, _amountIn);
+        address _uniswapSwapRouterAddress = UNISWAP_SWAP_ROUTER_ADDRESS;
+        
+        IERC20(_tokenIn).safeApprove(_uniswapSwapRouterAddress, _amountIn);
 
         // create the input params
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
@@ -189,7 +171,7 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
         });
 
         // swap currency on uniswap
-        return ISwapRouter(uniswapSwapRouterAddress).exactInputSingle(params);
+        return ISwapRouter(_uniswapSwapRouterAddress).exactInputSingle(params);
     }
     /**
      * @dev Internal function to validate input parameters. Reverts if given invalid input params.
@@ -205,17 +187,9 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
         uint24 _uniFee
     ) internal view {
         require(((_uniFee == 100) || (_uniFee == 500) || (_uniFee == 3000) || (_uniFee == 10_000)), "Invalid Uni Fee");
-        if (!(whitelistedInputTokens[_tokenIn])) revert InvalidToken();
+        if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert InvalidToken();
         if (_recipient == address(0)) revert ZeroAddress();
         if (_amountIn == 0 || _amountOut == 0) revert InvalidAmount();
-    }
-
-    /**
-     * @dev validates recipient's preferences.  Does not revert.
-     * @return true when valid preferences, false when invalid
-     */
-    function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
-        return ((_preferences.slippageAllowed != 0) && (whitelistedOutputTokens[_preferences.tokenAddress]));
     }
 
     /**
@@ -249,57 +223,9 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
      *  - 'adminFee" <= 'MAX_ADMIN_FEE'
      *  - msg.sender is the owner
      */
-    function setAdminFee(uint256 _adminFee) external onlyOwner {
+    function setAdminFee(uint256 _adminFee) external onlyHubOwner {
         if (_adminFee > MAX_ADMIN_FEE) revert InvalidAdminFee();
         adminFee = _adminFee;
-    }
-
-    /**
-     * @dev Admin function to add a token to the input whitelist
-     * @param _token the address of the token
-     * Requirements:
-     *  - '_token" != address(0)
-     *  - msg.sender is the owner
-     */
-    function addToInputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        whitelistedInputTokens[_token] = true;
-    }
-
-    /**
-     * @dev Admin function to revoke a token from the input whitelist
-     * @param _token the address of the token
-     * Requirements:
-     *  - '_token" != address(0)
-     *  - msg.sender is the owner
-     */
-    function revokeFromInputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        delete whitelistedInputTokens[_token];
-    }
-
-    /**
-     * @dev Admin function to add a token to the output whitelist
-     * @param _token the address of the token
-     * Requirements:
-     *  - '_token" != address(0)
-     *  - msg.sender is the owner
-     */
-    function addToOutputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        whitelistedOutputTokens[_token] = true;
-    }
-
-    /**
-     * @dev Admin function to revoke a token from the output whitelist
-     * @param _token the address of the token
-     * Requirements:
-     *  - '_token" != address(0)
-     *  - msg.sender is the owner
-     */
-    function revokeFromOutputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        delete whitelistedOutputTokens[_token];
     }
 
     /**
@@ -308,13 +234,12 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
      * '_token' must always be verified manually before being called by the admin
      * @param _token the address of the token to withdraw
      * @param _amount the amount of token to withdraw
-     * Requirements: 
      * Requirements:
-     *  - '_token" != address(0)
+     *  - '_token' != address(0)
      *  - msg.sender is the owner
      *  - Token balance of address(this) > 0
      */
-    function withdraw(address _token, uint256 _amount) external onlyOwner {
+    function withdraw(address _token, uint256 _amount) external onlyHubOwner {
         if (IERC20(_token).balanceOf(address(this)) == 0) revert ZeroBalance();
         IERC20(_token).safeTransfer(msg.sender, _amount);
     }
@@ -322,14 +247,14 @@ contract KyotoPay is Ownable, Pausable, IKyotoPay {
     /**
      * @dev Admin function to pause payments
      */
-    function pause() external onlyOwner {
+    function pause() external onlyHubOwner {
         _pause();
     }
 
     /**
      * @dev Admin function to unpause payments
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyHubOwner {
         _unpause();
     }
 }

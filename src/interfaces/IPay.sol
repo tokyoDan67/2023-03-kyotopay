@@ -6,7 +6,7 @@ pragma solidity ^0.8.17;
 
 import {DataTypes} from "../libraries/DataTypes.sol";
 
-interface IKyotoPay {
+interface IPay {
 
     /**
      *  Invalid value(s) for arguments 'amountIn' or '_amountOut'.  '_amountIn' is zero or '_amountOut' is zero
