@@ -7,11 +7,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "../src/libraries/DataTypes.sol";
+import {Errors} from "../src/libraries/Errors.sol";
 import {Fork} from "./reference/Fork.sol";
 import {Helper} from "./reference/Helper.sol";
-import {IPayer} from "../src/interfaces/IPayer.sol";
 import {IWETH9} from "../src/interfaces/IWETH9.sol";
-import {Payer} from "../src/Payer.sol";
+import {Disburser} from "../src/Disburser.sol";
 import {MockERC20} from "./reference/MockERC20.sol";
 
 /*************************
@@ -22,7 +22,7 @@ import {MockERC20} from "./reference/MockERC20.sol";
  **************************/
 
 // Harness contract for internal functions
-contract PayHarness is Pay {
+contract DisburserHarness is Disburser {
     constructor(uint256 _fee, address _hub, address _uniswapSwapRouterAddress, address _wethAddress)
         Pay(_fee, _hub, _uniswapSwapRouterAddress, _wethAddress)
     {}
@@ -41,23 +41,23 @@ contract PayHarness is Pay {
 }
 
 contract Constructor is Test, Helper {
-    Pay payContract;
+    Payer payer;
 
     function test_RevertIf_InvalidAdminFee() public {
         uint256 _invalidAdminFee = 600;
-        vm.expectRevert(IKyotoPay.InvalidAdminFee.selector);
+        vm.expectRevert(Errors.InvalidAdminFee.selector);
         payContract = new KyotoPay(_invalidAdminFee, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
     }
 
     function test_RevertIf_UniswapRouterZeroAddress() public {
         uint256 _validAdminFee = 100;
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract = new KyotoPay(_validAdminFee, address(0), WETH_ADDRESS);
     }
 
     function test_RevertIf_WethZeroAddress() public {
         uint256 _validAdminFee = 100;
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract = new KyotoPay(_validAdminFee, UNISWAP_SWAPROUTER_ADDRESS, address(0));
     }
 
@@ -103,7 +103,7 @@ contract Setters is Test, Helper {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidRecipientSlippage.selector);
+        vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
         kyotoPayContract.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
@@ -118,7 +118,7 @@ contract Setters is Test, Helper {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidRecipientSlippage.selector);
+        vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
         kyotoPayContract.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
@@ -133,7 +133,7 @@ contract Setters is Test, Helper {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidRecipientSlippage.selector);
+        vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
         kyotoPayContract.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
@@ -150,7 +150,7 @@ contract Setters is Test, Helper {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidRecipientToken.selector);
+        vm.expectRevert(Errors.InvalidRecipientToken.selector);
         kyotoPayContract.setPreferences(_invalidToken);
     }
 
@@ -200,7 +200,7 @@ contract Setters is Test, Helper {
 
         vm.startPrank(ADMIN);
 
-        vm.expectRevert(IKyotoPay.InvalidAdminFee.selector);
+        vm.expectRevert(Errors.InvalidAdminFee.selector);
         kyotoPayContract.setAdminFee(_maxFee + 1);
 
         vm.stopPrank();
@@ -260,7 +260,7 @@ contract Whitelist is Test, Helper {
     function test_addToInputWhiteList_RevertIf_ZeroAddress() public {
         vm.startPrank(ADMIN);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract.addToInputWhitelist(address(0));
 
         vm.stopPrank();
@@ -269,7 +269,7 @@ contract Whitelist is Test, Helper {
     function test_addToOutputWhiteList_RevertIf_ZeroAddress() public {
         vm.startPrank(ADMIN);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract.addToOutputWhitelist(address(0));
 
         vm.stopPrank();
@@ -316,7 +316,7 @@ contract Whitelist is Test, Helper {
     function test_revokeFromInputWhiteListRevertIf_ZeroAddress() public {
         vm.startPrank(ADMIN);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract.revokeFromInputWhitelist(address(0));
 
         vm.stopPrank();
@@ -325,7 +325,7 @@ contract Whitelist is Test, Helper {
     function test_revokeFromOutputWhiteListRevertIf_ZeroAddress() public {
         vm.startPrank(ADMIN);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPayContract.revokeFromOutputWhitelist(address(0));
 
         vm.stopPrank();
@@ -431,7 +431,7 @@ contract Withdraw is Test, Helper {
     }
 
     function test_Withdraw_RevertIfZeroBalance() public {
-        vm.expectRevert(IKyotoPay.ZeroBalance.selector);
+        vm.expectRevert(Errors.ZeroBalance.selector);
         kyotoPay.withdraw(address(mockERC20), _toTransfer);
     }
 
@@ -554,7 +554,7 @@ contract Pay is Fork {
     function testFork_Pay_RevertIf_RecipientAddressZero() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPay.pay(address(0), USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
@@ -581,7 +581,7 @@ contract Pay is Fork {
     function testFork_Pay_RevertIf_InvalidInputToken() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidToken.selector);
+        vm.expectRevert(Errors.InvalidToken.selector);
         kyotoPay.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
@@ -590,7 +590,7 @@ contract Pay is Fork {
     function testFork_Pay_RevertIf_InvalidAmountIn() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 0, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
@@ -599,7 +599,7 @@ contract Pay is Fork {
     function tesFork_Pay_RevertIf_InvalidAmountOut() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 0, 100, bytes32(0));
 
         vm.stopPrank();
@@ -729,7 +729,7 @@ contract Pay is Fork {
     function testFork_PayETH_RevertIf_RecipientAddressZero() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.ZeroAddress.selector);
+        vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoPay.payEth{value: 1 ether}(address(0), 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
@@ -760,7 +760,7 @@ contract Pay is Fork {
     function testFork_PayEth_RevertIf_InvalidAmountIn() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         kyotoPay.payEth{value: 0}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
@@ -769,7 +769,7 @@ contract Pay is Fork {
     function testFork_PayEth_RevertIf_InvalidAmountOut() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         kyotoPay.payEth{value: 1 ether}(RANDOM_RECIPIENT, 0, 100, bytes32(0));
 
         vm.stopPrank();

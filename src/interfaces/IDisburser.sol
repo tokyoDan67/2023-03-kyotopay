@@ -6,7 +6,7 @@ pragma solidity =0.8.17;
 
 import {DataTypes} from "../libraries/DataTypes.sol";
 
-interface IPayer {
+interface IDisburser {
     /**
      * Emitted to pass data from payment function
      */

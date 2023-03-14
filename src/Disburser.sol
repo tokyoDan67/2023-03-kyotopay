@@ -12,14 +12,14 @@ import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {Events} from "./libraries/Events.sol";
 import {HubOwnable} from "./base/HubOwnable.sol";
-import {IPayer} from "./interfaces/IPayer.sol";
+import {IDisburser} from "./interfaces/IDisburser.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
 // To Do: 
 //   - Add a receive function
 //   - Add EIP712 signatures 
 
-contract Payer is HubOwnable, Pausable, IPayer {
+contract Disburser is HubOwnable, Pausable, IPayer {
     using SafeERC20 for IERC20;
 
     uint256 private constant DECIMALS = 10_000;
