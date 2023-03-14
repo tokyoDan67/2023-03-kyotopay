@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity =0.8.17;
 
 import {DataTypes} from "../../src/libraries/DataTypes.sol";
 import {Pay} from "../../src/Pay.sol";
