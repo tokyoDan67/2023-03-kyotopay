@@ -8,31 +8,6 @@ import {DataTypes} from "../libraries/DataTypes.sol";
 
 interface IPay {
     /**
-     *  Invalid value(s) for arguments 'amountIn' or '_amountOut'.  '_amountIn' is zero or '_amountOut' is zero
-     */
-    error InvalidAmount();
-
-    /**
-     *  Argument '_fee' in setFee cannot be greater than MAX_FEE
-     */
-    error InvalidAdminFee();
-
-    /**
-     *  Argument '_tokenIn' is not a valid input token
-     */
-    error InvalidToken();
-
-    /**
-     * Passed in address is address(0)
-     */
-    error ZeroAddress();
-
-    /**
-     * address(this) has a token balance of 0 for the passed in '_tokenAddress"
-     */
-    error ZeroBalance();
-
-    /**
      * Emitted to pass data from payment function
      */
     event Payment(address recipient, address indexed tokenAddress, uint256 indexed amountIn, bytes32 indexed data);

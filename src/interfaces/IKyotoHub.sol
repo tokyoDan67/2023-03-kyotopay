@@ -5,25 +5,6 @@ pragma solidity =0.8.17;
 
 import {DataTypes} from "../libraries/DataTypes.sol";
 interface IKyotoHub {
-    //////////////////
-    ///   Errors   ///
-    //////////////////
-
-    /**
-     * Passed in address is address(0)
-     */
-    error ZeroAddress();
-
-    /**
-     *  Argument '_preferences.slippageAllowed' is invalid: it is zero or greater than the decimal values
-     */
-    error InvalidRecipientSlippage();
-
-    /**
-     * Argument '_preferences.tokenAddress' is not a valid whitelisted output token found in 'whitelistedOutputTokens'
-     */
-    error InvalidRecipientToken();
-
     ///////////////////////////
     ///   Admin Functions   ///
     ///////////////////////////

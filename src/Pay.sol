@@ -10,6 +10,7 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
+import {Events} from "./libraries/Events.sol";
 import {HubOwnable} from "./base/HubOwnable.sol";
 import {IPay} from "./interfaces/IPay.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
@@ -128,7 +129,7 @@ contract Pay is HubOwnable, Pausable, IPay {
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
         if ((_tokenIn == _preferences.tokenAddress) || !(areValidPreferences)) {
             _sendRecipientFunds(_tokenIn, _recipient, _amountIn);
-            emit Payment(_recipient, _tokenIn, _amountIn, _data);
+            _emitPaymentEvent(_recipient, _tokenIn, _amountIn, _data);
 
             return;
         }
@@ -141,7 +142,7 @@ contract Pay is HubOwnable, Pausable, IPay {
         _sendRecipientFunds(_preferences.tokenAddress, _recipient, swapOutput);
 
         // emit any data for end user use
-        emit Payment(_recipient, _tokenIn, _amountIn, _data);
+        _emitPaymentEvent(_recipient, _tokenIn, _amountIn, _data);
     }
     /**
      * @dev internal function to execute a swap using the Uniswap Swap Router
@@ -219,6 +220,14 @@ contract Pay is HubOwnable, Pausable, IPay {
      */
     function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
         return ((_preferences.slippageAllowed != 0) && (KYOTO_HUB.isWhitelistedOutputToken(_preferences.tokenAddress)));
+    }
+
+    /**
+     * @dev cuts down on bytecode
+     */
+     // (_recipient, _tokenIn, _amountIn, _data);
+    function _emitPaymentEvent(address _recipient, address _tokenIn, uint256 _amountIn, bytes32 _data) internal {
+        emit Events.Payment(_recipient, _tokenIn, _amountIn, _data);
     }
 
     /*******************************

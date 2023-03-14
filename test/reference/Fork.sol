@@ -31,7 +31,7 @@ contract Fork is Helper, Test {
 
 
     /**
-     * Store contracts
+     * IERC20 Contracts
      */
     IERC20 USDC_CONTRACT = IERC20(USDC_ADDRESS);
     IERC20 DAI_CONTRACT = IERC20(DAI_ADDRESS);

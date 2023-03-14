@@ -13,6 +13,8 @@ import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 // To Do: 
 // - Need to make 2 step ownable...
 // - Need to make a constants library
+// - Add events
+// - Convert whitelisted tokens to enumerable set
 contract KyotoHub is IKyotoHub, Pausable, Ownable {
 
     uint256 private constant DECIMALS = 10_000;
