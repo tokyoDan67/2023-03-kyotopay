@@ -32,9 +32,9 @@ library Errors {
      */
     error InvalidRecipientToken();
 
-    ///////////////
-    ///   Pay   ///
-    ///////////////
+    /////////////////
+    ///   Payer   ///
+    /////////////////
 
     /**
      *  Invalid value(s) for arguments 'amountIn' or '_amountOut'.  '_amountIn' is zero or '_amountOut' is zero

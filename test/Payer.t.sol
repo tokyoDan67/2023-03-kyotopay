@@ -1,5 +1,5 @@
 // // SPDX-License-Identifier: MIT
-pragma solidity =0.8.17;
+// pragma solidity =0.8.17;
 
 // import "forge-std/Test.sol";
 // import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -9,12 +9,10 @@ pragma solidity =0.8.17;
 // import {DataTypes} from "../src/libraries/DataTypes.sol";
 // import {Fork} from "./reference/Fork.sol";
 // import {Helper} from "./reference/Helper.sol";
-// import {IKyotoPay} from "../src/interfaces/IKyotoPay.sol";
+// import {IPay} from "../src/interfaces/IPay.sol";
 // import {IWETH9} from "../src/interfaces/IWETH9.sol";
-// import {KyotoPay} from "../src/KyotoPay.sol";
-// import {KyotoPayWrapper} from "./reference/KyotoPayWrapper.sol";
+// import {Pay} from "../src/Pay.sol";
 // import {MockERC20} from "./reference/MockERC20.sol";
-
 
 // /*************************
 //  *
@@ -23,13 +21,32 @@ pragma solidity =0.8.17;
 //  *
 //  **************************/
 
+// // Harness contract for internal functions
+// contract PayHarness is Pay {
+//     constructor(uint256 _fee, address _hub, address _uniswapSwapRouterAddress, address _wethAddress)
+//         Pay(_fee, _hub, _uniswapSwapRouterAddress, _wethAddress)
+//     {}
+
+//     function validatePreferences(DataTypes.Preferences memory _preferences) external view returns (bool) {
+//         return _validatePreferences(_preferences);
+//     }
+
+//     function getSenderFunds(address _tokenAddress, uint256 _amountIn) external {
+//         _getSenderFunds(_tokenAddress, _amountIn);
+//     }
+
+//     function sendRecipientFunds(address _tokenAddress, address _recipient, uint256 _amount) external {
+//         _sendRecipientFunds(_tokenAddress, _recipient, _amount);
+//     }
+// }
+
 // contract Constructor is Test, Helper {
-//     KyotoPay kyotoPayContract;
+//     Pay payContract;
 
 //     function test_RevertIf_InvalidAdminFee() public {
 //         uint256 _invalidAdminFee = 600;
 //         vm.expectRevert(IKyotoPay.InvalidAdminFee.selector);
-//         kyotoPayContract = new KyotoPay(_invalidAdminFee, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+//         payContract = new KyotoPay(_invalidAdminFee, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
 //     }
 
 //     function test_RevertIf_UniswapRouterZeroAddress() public {
@@ -47,7 +64,7 @@ pragma solidity =0.8.17;
 //     function test_ValidParams() public {
 //         kyotoPayContract = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
 
-//         assertEq(kyotoPayContract.adminFee(), FEE);
+//         assertEq(payContract.adminFee(), FEE);
 //         assertEq(kyotoPayContract.uniswapSwapRouterAddress(), UNISWAP_SWAPROUTER_ADDRESS);
 //     }
 // }
@@ -55,7 +72,7 @@ pragma solidity =0.8.17;
 // contract Setters is Test, Helper {
 //     using SafeERC20 for ERC20;
 
-//     KyotoPay kyotoPayContract;
+//     Pay payContract;
 //     address mockERC20;
 
 //     function setUp() public {

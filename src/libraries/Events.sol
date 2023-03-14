@@ -13,9 +13,9 @@ library Events {
     event RevokedWhitelistedInputToken(address indexed token);
     event RevokedWhitelistedOutputToken(address indexed token);
 
-    ///////////////
-    ///   Pay   ///
-    ///////////////
+    /////////////////
+    ///   Payer   ///
+    /////////////////
 
     /**
      * Emitted to pass data from payment function

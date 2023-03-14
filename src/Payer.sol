@@ -12,14 +12,14 @@ import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {Events} from "./libraries/Events.sol";
 import {HubOwnable} from "./base/HubOwnable.sol";
-import {IPay} from "./interfaces/IPay.sol";
+import {IPayer} from "./interfaces/IPayer.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
 // To Do: 
 //   - Add a receive function
 //   - Add EIP712 signatures 
 
-contract Pay is HubOwnable, Pausable, IPay {
+contract Payer is HubOwnable, Pausable, IPayer {
     using SafeERC20 for IERC20;
 
     uint256 private constant DECIMALS = 10_000;
@@ -144,6 +144,7 @@ contract Pay is HubOwnable, Pausable, IPay {
         // emit any data for end user use
         _emitPaymentEvent(_recipient, _tokenIn, _amountIn, _data);
     }
+
     /**
      * @dev internal function to execute a swap using the Uniswap Swap Router
      * Uses the recipient's set slippage for amountOut
