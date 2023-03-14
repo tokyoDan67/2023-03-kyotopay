@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {KyotoPay} from "../../src/KyotoPay.sol";
+import {DataTypes} from "../../src/libraries/DataTypes.sol";
+import {Pay} from "../../src/Pay.sol";
 
-contract KyotoPayWrapper is KyotoPay {
-    constructor(uint256 _fee, address _uniswapSwapRouterAddress, address _wethAddress)
-        KyotoPay(_fee, _uniswapSwapRouterAddress, _wethAddress)
+contract PayHarness is Pay {
+    constructor(uint256 _fee, address _hub, address _uniswapSwapRouterAddress, address _wethAddress)
+        Pay(_fee, _hub, _uniswapSwapRouterAddress, _wethAddress)
     {}
 
-    function validatePreferences(Preferences memory _preferences) external view returns (bool) {
+    function validatePreferences(DataTypes.Preferences memory _preferences) external view returns (bool) {
         return _validatePreferences(_preferences);
     }
 

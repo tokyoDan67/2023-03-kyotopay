@@ -9,8 +9,12 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
-// Need to make 2 step ownable...
+// To Do: 
+// - Need to make 2 step ownable...
+// - Need to make a constants library
 contract KyotoHub is IKyotoHub, Pausable, Ownable {
+
+    uint256 private constant DECIMALS = 10_000;
 
     // mapping for prferences
     mapping(address => DataTypes.Preferences) private recipientPreferences;
@@ -90,17 +94,10 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
         return whitelistedOutputTokens[_token];
     }
 
-    function validateRecipientPreferences(address _recipient) external view returns (bool) {
-        return _validatePreferences(recipientPreferences[_recipient]);
-    }
+    // function validateRecipientPreferences(address _recipient) external view returns (bool) {
+    //     return _validatePreferences(recipientPreferences[_recipient]);
+    // }
 
-    /**
-     * @dev validates recipient's preferences.  Does not revert.
-     * @return true when valid preferences, false when invalid
-     */
-    function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
-        return ((_preferences.slippageAllowed != 0) && (whitelistedOutputTokens[_preferences.tokenAddress]));
-    }
     function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory) {}
 
     /**

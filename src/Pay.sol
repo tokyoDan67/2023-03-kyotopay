@@ -13,9 +13,11 @@ import {HubOwnable} from "./base/HubOwnable.sol";
 import {IPay} from "./interfaces/IPay.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
-// To Do: Add a receive function
+// To Do: 
+//   - Add a receive function
+//   - Add EIP712 signatures 
 
-contract Pay is Ownable, Pausable, IPay {
+contract Pay is HubOwnable, Pausable, IPay {
     using SafeERC20 for IERC20;
 
     uint256 private constant DECIMALS = 10_000;
@@ -24,12 +26,10 @@ contract Pay is Ownable, Pausable, IPay {
 
     address public immutable UNISWAP_SWAP_ROUTER_ADDRESS;
     address public immutable WETH_ADDRESS;
-    IPreferences public immutable PREFERENCES_CONTRACT;
-
 
     // adminFee is denominated in DECIMALS.  For example, a value for fee of 200 = 2%
     uint256 public adminFee;
-    constructor(uint256 _adminFee, address _uniswapSwapRouterAddress, address _wethAddress) {
+    constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress) HubOwnable(_kyotoHub) {
         if (_adminFee > MAX_ADMIN_FEE) revert InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert ZeroAddress();
         if (_wethAddress == address(0)) revert ZeroAddress();
@@ -98,7 +98,7 @@ contract Pay is Ownable, Pausable, IPay {
 
         IWETH9(_wethAddress).deposit{value: _msgValue}();
 
-        _pay(_recipient, wethAddress, _msgValue, _amountOut, _uniFee, _data);
+        _pay(_recipient, _wethAddress, _msgValue, _amountOut, _uniFee, _data);
     }
 
     /*******************************
@@ -121,7 +121,7 @@ contract Pay is Ownable, Pausable, IPay {
         bytes32 _data
     ) internal {
         // Cache the recipient's preferences
-        DataTypes.Preferences memory _preferences = recipientPreferences[_recipient];
+        DataTypes.Preferences memory _preferences = KYOTO_HUB.getRecipientPreferences(_recipient);
         bool areValidPreferences = _validatePreferences(_preferences);
 
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
@@ -154,6 +154,7 @@ contract Pay is Ownable, Pausable, IPay {
         uint24 _uniFee,
         uint96 _slippageAllowed
     ) internal returns (uint256) {
+        // Cache
         address _uniswapSwapRouterAddress = UNISWAP_SWAP_ROUTER_ADDRESS;
         
         IERC20(_tokenIn).safeApprove(_uniswapSwapRouterAddress, _amountIn);
@@ -186,6 +187,7 @@ contract Pay is Ownable, Pausable, IPay {
         uint256 _amountOut,
         uint24 _uniFee
     ) internal view {
+        // To Do: Make into custom error. Need to review logic operations...
         require(((_uniFee == 100) || (_uniFee == 500) || (_uniFee == 3000) || (_uniFee == 10_000)), "Invalid Uni Fee");
         if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert InvalidToken();
         if (_recipient == address(0)) revert ZeroAddress();
@@ -208,6 +210,14 @@ contract Pay is Ownable, Pausable, IPay {
 
         // pay the recipient the excess
         IERC20(_tokenAddress).safeTransfer(_recipient, _amount - ownerPayment);
+    }
+
+    /**
+     * @dev validates recipient's preferences.  Does not revert.
+     * @return true when valid preferences, false when invalid
+     */
+    function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
+        return ((_preferences.slippageAllowed != 0) && (KYOTO_HUB.isWhitelistedOutputToken(_preferences.tokenAddress)));
     }
 
     /*******************************

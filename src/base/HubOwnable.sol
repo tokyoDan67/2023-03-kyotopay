@@ -16,6 +16,6 @@ abstract contract HubOwnable is HubAware {
     }
 
     function _validateMsgSenderHubOwner() internal view {
-        if (msg.sender != DREM_HUB.owner()) revert Errors.NotHubOwner();
+        if (msg.sender != KYOTO_HUB.owner()) revert Errors.NotHubOwner();
     }
 }

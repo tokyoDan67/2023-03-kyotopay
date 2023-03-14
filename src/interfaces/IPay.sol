@@ -24,16 +24,6 @@ interface IPay {
     error InvalidToken();
 
     /**
-     *  Argument '_preferences.slippageAllowed' is invalid: it is zero or greater than the decimal values
-     */
-    error InvalidRecipientSlippage();
-
-    /**
-     * Argument '_preferences.tokenAddress' is not a valid whitelisted output token found in 'whitelistedOutputTokens'
-     */
-    error InvalidRecipientToken();
-
-    /**
      * Passed in address is address(0)
      */
     error ZeroAddress();
@@ -47,15 +37,6 @@ interface IPay {
      * Emitted to pass data from payment function
      */
     event Payment(address recipient, address indexed tokenAddress, uint256 indexed amountIn, bytes32 indexed data);
-
-    /**
-     * Sets the sender's receiving preferences. 
-     * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage
-     * Requirements:
-     *  - '_preferences.slippageAllowed' is not 0% (i.e. >= 10,000) or 100% (i.e. 0)
-     *  - '_preferences.tokenAddress' is a valid output token found in whitelistedOutputTokens
-     */
-    function setPreferences(DataTypes.Preferences calldata _preferences) external;
 
     /**
      * Pays a recipient in their preferred token from a given input token
