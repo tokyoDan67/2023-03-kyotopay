@@ -5,6 +5,10 @@ pragma solidity =0.8.17;
 
 import {DataTypes} from "../libraries/DataTypes.sol";
 interface IKyotoHub {
+    //////////////////
+    ///   Errors   ///
+    //////////////////
+
     /**
      * Passed in address is address(0)
      */
@@ -20,7 +24,6 @@ interface IKyotoHub {
      */
     error InvalidRecipientToken();
 
-
     ///////////////////////////
     ///   Admin Functions   ///
     ///////////////////////////
@@ -34,6 +37,7 @@ interface IKyotoHub {
     ////////////////////////////////////
     ///   State Changing Functions   ///
     ////////////////////////////////////
+
     /**
      * Sets the sender's receiving preferences. 
      * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage

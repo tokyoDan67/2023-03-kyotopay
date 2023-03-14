@@ -9,6 +9,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
+import {Errors} from "./libraries/Errors.sol";
 import {HubOwnable} from "./base/HubOwnable.sol";
 import {IPay} from "./interfaces/IPay.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
@@ -30,9 +31,9 @@ contract Pay is HubOwnable, Pausable, IPay {
     // adminFee is denominated in DECIMALS.  For example, a value for fee of 200 = 2%
     uint256 public adminFee;
     constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress) HubOwnable(_kyotoHub) {
-        if (_adminFee > MAX_ADMIN_FEE) revert InvalidAdminFee();
-        if (_uniswapSwapRouterAddress == address(0)) revert ZeroAddress();
-        if (_wethAddress == address(0)) revert ZeroAddress();
+        if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
+        if (_uniswapSwapRouterAddress == address(0)) revert Errors.ZeroAddress();
+        if (_wethAddress == address(0)) revert Errors.ZeroAddress();
 
         adminFee = _adminFee;
         UNISWAP_SWAP_ROUTER_ADDRESS = _uniswapSwapRouterAddress;
@@ -189,9 +190,9 @@ contract Pay is HubOwnable, Pausable, IPay {
     ) internal view {
         // To Do: Make into custom error. Need to review logic operations...
         require(((_uniFee == 100) || (_uniFee == 500) || (_uniFee == 3000) || (_uniFee == 10_000)), "Invalid Uni Fee");
-        if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert InvalidToken();
-        if (_recipient == address(0)) revert ZeroAddress();
-        if (_amountIn == 0 || _amountOut == 0) revert InvalidAmount();
+        if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert Errors.InvalidToken();
+        if (_recipient == address(0)) revert Errors.ZeroAddress();
+        if (_amountIn == 0 || _amountOut == 0) revert Errors.InvalidAmount();
     }
 
     /**
@@ -234,7 +235,7 @@ contract Pay is HubOwnable, Pausable, IPay {
      *  - msg.sender is the owner
      */
     function setAdminFee(uint256 _adminFee) external onlyHubOwner {
-        if (_adminFee > MAX_ADMIN_FEE) revert InvalidAdminFee();
+        if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
         adminFee = _adminFee;
     }
 
@@ -250,7 +251,7 @@ contract Pay is HubOwnable, Pausable, IPay {
      *  - Token balance of address(this) > 0
      */
     function withdraw(address _token, uint256 _amount) external onlyHubOwner {
-        if (IERC20(_token).balanceOf(address(this)) == 0) revert ZeroBalance();
+        if (IERC20(_token).balanceOf(address(this)) == 0) revert Errors.ZeroBalance();
         IERC20(_token).safeTransfer(msg.sender, _amount);
     }
 

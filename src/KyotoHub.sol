@@ -6,6 +6,7 @@ pragma solidity =0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {Errors} from "./libraries/Errors.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
@@ -31,9 +32,9 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
      */
     function setPreferences(DataTypes.Preferences calldata _preferences) external whenNotPaused {
         if ((_preferences.slippageAllowed == 0) || (_preferences.slippageAllowed >= DECIMALS)) {
-            revert InvalidRecipientSlippage();
+            revert Errors.InvalidRecipientSlippage();
         }
-        if (!(whitelistedOutputTokens[_preferences.tokenAddress])) revert InvalidRecipientToken();
+        if (!(whitelistedOutputTokens[_preferences.tokenAddress])) revert Errors.InvalidRecipientToken();
 
         recipientPreferences[msg.sender] = _preferences;
     }
@@ -46,7 +47,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
      *  - msg.sender is the owner
      */
     function addToInputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
+        if (_token == address(0)) revert Errors.ZeroAddress();
         whitelistedInputTokens[_token] = true;
     }
 
@@ -58,7 +59,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
      *  - msg.sender is the owner
      */
     function revokeFromInputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
+        if (_token == address(0)) revert Errors.ZeroAddress();
         delete whitelistedInputTokens[_token];
     }
 
@@ -70,7 +71,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
      *  - msg.sender is the owner
      */
     function addToOutputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
+        if (_token == address(0)) revert Errors.ZeroAddress();
         whitelistedOutputTokens[_token] = true;
     }
 
@@ -82,7 +83,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
      *  - msg.sender is the owner
      */
     function revokeFromOutputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
+        if (_token == address(0)) revert Errors.ZeroAddress();
         delete whitelistedOutputTokens[_token];
     }
 
