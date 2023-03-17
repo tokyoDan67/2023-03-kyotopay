@@ -22,9 +22,9 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
 
-    uint256 private constant DECIMALS = 10_000;
+    uint256 public constant DECIMALS = 10_000;
     // MAX_ADMIN_FEE is denominated in DECIMALs.  I.e. 500 = 5%
-    uint256 private constant MAX_ADMIN_FEE = 500;
+    uint256 public constant MAX_ADMIN_FEE = 500;
 
     address public immutable UNISWAP_SWAP_ROUTER_ADDRESS;
     address public immutable WETH_ADDRESS;

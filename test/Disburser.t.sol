@@ -25,7 +25,7 @@ import {MockERC20} from "./reference/MockERC20.sol";
 // Harness contract for internal functions
 contract DisburserHarness is Disburser {
     constructor(uint256 _fee, address _hub, address _uniswapSwapRouterAddress, address _wethAddress)
-        Pay(_fee, _hub, _uniswapSwapRouterAddress, _wethAddress)
+        Disburser(_fee, _hub, _uniswapSwapRouterAddress, _wethAddress)
     {}
 
     function validatePreferences(DataTypes.Preferences memory _preferences) external view returns (bool) {
@@ -72,8 +72,8 @@ contract DisburserConstructor is Test, Helper {
         disburser = new Disburser(FEE, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
 
         assertEq(disburser.adminFee(), FEE);
-        assertEq(disburser.UNISWAP_SWAPROUTER_ADDRESS(), UNISWAP_SWAPROUTER_ADDRESS);
-        assertEq(disburser.KYOTO_HUB(), kyotoHubAddress);
+        assertEq(disburser.UNISWAP_SWAP_ROUTER_ADDRESS(), UNISWAP_SWAPROUTER_ADDRESS);
+        assertEq(address(disburser.KYOTO_HUB()), kyotoHubAddress);
     }
 }
 
@@ -85,7 +85,7 @@ contract Setters is Test, Helper {
     address mockERC20;
 
     function setUp() public {
-        kyotoHubAddress = address(new KyotoHub());
+        kyotoHub = new KyotoHub();
         disburser = new Disburser(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
         mockERC20 = address(new MockERC20());
         kyotoHub.addToInputWhitelist(mockERC20);
@@ -114,7 +114,7 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
-        KyotoHub.setPreferences(_invalidSlippage);
+        kyotoHub.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
     }
@@ -327,8 +327,8 @@ contract DisburserHarnessInternalFunctions is Test, Helper {
         kyotoHub = new KyotoHub();
         disburserHarness = new DisburserHarness(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
         mockERC20 = ERC20(new MockERC20());
-        kyotoPayWrapper.addToInputWhitelist(address(mockERC20));
-        kyotoPayWrapper.addToOutputWhitelist(address(mockERC20));
+        kyotoHub.addToInputWhitelist(address(mockERC20));
+        kyotoHub.addToOutputWhitelist(address(mockERC20));
     }
 
     function _transferMockERC20(address _recipient, uint256 _amount) internal {
@@ -416,6 +416,7 @@ contract Withdraw is Test, Helper {
 
         uint256 _adminBalanceBeforeWithdraw = mockERC20.balanceOf(address(this));
 
+        vm.prank(ADMIN);
         disburser.withdraw(address(mockERC20), _toTransfer);
     
         uint256 _adminBalanceAfterWithdraw = mockERC20.balanceOf(address(this)); 
@@ -499,10 +500,10 @@ contract DisburserPayEthMainnet is Fork {
          *  Set allowances to type(uint256).max
          *  msg.sender is RANDOM_USER from startPrank() above
          */
-        DAI_CONTRACT.safeApprove(address(kyotoPay), type(uint256).max);
-        USDC_CONTRACT.safeApprove(address(kyotoPay), type(uint256).max);
-        WETH_CONTRACT.safeApprove(address(kyotoPay), type(uint256).max);
-        WBTC_CONTRACT.safeApprove(address(kyotoPay), type(uint256).max);
+        DAI_CONTRACT.safeApprove(address(disburser), type(uint256).max);
+        USDC_CONTRACT.safeApprove(address(disburser), type(uint256).max);
+        WETH_CONTRACT.safeApprove(address(disburser), type(uint256).max);
+        WBTC_CONTRACT.safeApprove(address(disburser), type(uint256).max);
 
         vm.stopPrank();
     }
@@ -511,17 +512,17 @@ contract DisburserPayEthMainnet is Fork {
         /**
          * Verify inputs
          */
-        assertTrue(kyotoPay.whitelistedInputTokens(WBTC_ADDRESS));
-        assertTrue(kyotoPay.whitelistedInputTokens(WETH_ADDRESS));
-        assertTrue(kyotoPay.whitelistedInputTokens(DAI_ADDRESS));
-        assertTrue(kyotoPay.whitelistedInputTokens(USDC_ADDRESS));
+        assertTrue(kyotoHub.whitelistedInputTokens(WBTC_ADDRESS));
+        assertTrue(kyotoHub.whitelistedInputTokens(WETH_ADDRESS));
+        assertTrue(kyotoHub.whitelistedInputTokens(DAI_ADDRESS));
+        assertTrue(kyotoHub.whitelistedInputTokens(USDC_ADDRESS));
 
         /**
          * Verify outputs
          */
-        assertTrue(kyotoPay.whitelistedOutputTokens(WETH_ADDRESS));
-        assertTrue(kyotoPay.whitelistedOutputTokens(DAI_ADDRESS));
-        assertTrue(kyotoPay.whitelistedOutputTokens(USDC_ADDRESS));
+        assertTrue(kyotoHub.whitelistedOutputTokens(WETH_ADDRESS));
+        assertTrue(kyotoHub.whitelistedOutputTokens(DAI_ADDRESS));
+        assertTrue(kyotoHub.whitelistedOutputTokens(USDC_ADDRESS));
 
         /**
          * Verify balances
@@ -535,50 +536,50 @@ contract DisburserPayEthMainnet is Fork {
         /**
          * Verify allowances
          */
-        assertEq(DAI_CONTRACT.allowance(RANDOM_USER, address(kyotoPay)), type(uint256).max);
-        assertEq(USDC_CONTRACT.allowance(RANDOM_USER, address(kyotoPay)), type(uint256).max);
-        assertEq(WBTC_CONTRACT.allowance(RANDOM_USER, address(kyotoPay)), type(uint256).max);
-        assertEq(WETH_CONTRACT.allowance(RANDOM_USER, address(kyotoPay)), type(uint256).max);
+        assertEq(DAI_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
+        assertEq(USDC_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
+        assertEq(WBTC_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
+        assertEq(WETH_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
 
         /**
          * Verify constants in Helper
          */
-        assertEq(FEE, kyotoPay.adminFee());
-        assertEq(KYOTOPAY_DECIMALS, kyotoPay.DECIMALS());
+        assertEq(FEE, disburser.adminFee());
+        assertEq(KYOTOPAY_DECIMALS, disburser.DECIMALS());
     }
 
     function testFork_Pay_RevertIf_RecipientAddressZero() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPay.pay(address(0), USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(address(0), USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
 
-    function testFork_Pay_RevertIf_WrongUniFee() public {
+    function testFork_Pay_RevertIf_InvalidUniFee() public {
         vm.startPrank(RANDOM_USER);
 
         uint24 _invalidUniFee = 333;
 
         vm.expectRevert("Invalid Uni Fee");
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, _invalidUniFee, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
     }
 
-    function testFork_Pay_RevertIfPaused() public {
-        kyotoPay.pause();
+    function testFork_Pay_RevertIf_Paused() public {
+        disburser.pause();
 
         vm.expectRevert("Pausable: paused");
-        kyotoPay.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
     }
 
     function testFork_Pay_RevertIf_InvalidInputToken() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidToken.selector);
-        kyotoPay.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -587,7 +588,7 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 0, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 0, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -596,7 +597,7 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 0, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 0, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -607,7 +608,7 @@ contract DisburserPayEthMainnet is Fork {
         uint256 userUSDCBalance = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -615,10 +616,10 @@ contract DisburserPayEthMainnet is Fork {
     function testFork_Pay_InsufficcientAllowance() public {
         vm.startPrank(RANDOM_USER);
 
-        USDC_CONTRACT.safeApprove(address(kyotoPay), 100);
+        USDC_CONTRACT.safeApprove(address(disburser), 100);
 
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -640,7 +641,7 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
         // Defined in Fork.sol...
         (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
@@ -663,7 +664,7 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Too little received");
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 100, _data);
 
         vm.stopPrank();
     }
@@ -686,7 +687,7 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
         // Defined in Fork.sol...
         (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
@@ -710,23 +711,23 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Too little received");
-        kyotoPay.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 100, _data);
 
         vm.stopPrank();
     }
 
     function testFork_PayETH_RevertIf_Paused() public {
-        kyotoPay.pause();
+        disburser.pause();
 
         vm.expectRevert("Pausable: paused");
-        kyotoPay.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
     }
 
     function testFork_PayETH_RevertIf_RecipientAddressZero() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPay.payEth{value: 1 ether}(address(0), 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(address(0), 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -737,18 +738,18 @@ contract DisburserPayEthMainnet is Fork {
         uint24 _invalidUniFee = 333;
 
         vm.expectRevert("Invalid Uni Fee");
-        kyotoPay.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, _invalidUniFee, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
     }
 
     function testFork_PayEth_RevertIf_InvalidInputToken() public {
-        kyotoPay.revokeFromInputWhitelist(WETH_ADDRESS);
+        kyotoHub.revokeFromInputWhitelist(WETH_ADDRESS);
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert(IKyotoPay.InvalidToken.selector);
-        kyotoPay.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        vm.expectRevert(Errors.InvalidToken.selector);
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -757,7 +758,7 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        kyotoPay.payEth{value: 0}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 0}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -766,7 +767,7 @@ contract DisburserPayEthMainnet is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        kyotoPay.payEth{value: 1 ether}(RANDOM_RECIPIENT, 0, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 0, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -777,7 +778,7 @@ contract DisburserPayEthMainnet is Fork {
         uint256 userETHBalance = RANDOM_USER.balance;
 
         vm.expectRevert();
-        kyotoPay.payEth{value: (userETHBalance + 1)}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: (userETHBalance + 1)}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -786,24 +787,24 @@ contract DisburserPayEthMainnet is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 100_000_000;
 
-        (address _recipientToken, uint96 _recipientSlippage) = kyotoPay.recipientPreferences(RANDOM_RECIPIENT);
+        (address _recipientToken, uint96 _recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
         assertEq(_recipientToken, address(0));
         assertEq(_recipientSlippage, uint96(0));
 
-        (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 kyotoUSDCBalanceBefore) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(kyotoPay));
+        (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
         emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
 
         vm.stopPrank();
 
-        (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 kyotoUSDCBalanceAfter) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(kyotoPay));
+        (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
         uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
@@ -816,7 +817,7 @@ contract DisburserPayEthMainnet is Fork {
 
         assertEq((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment);
         assertEq((userUSDCBalanceBefore - userUSDCBalanceAfter), _amountIn);
-        assertEq((kyotoUSDCBalanceAfter - kyotoUSDCBalanceBefore), adminFee);
+        assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee);
     }
 
     function testFork_Pay_PreferenceSetSameInputAndOutput() public {
@@ -827,26 +828,26 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
-        (address recipientToken, uint96 recipientSlippage) = kyotoPay.recipientPreferences(RANDOM_RECIPIENT);
+        (address recipientToken, uint96 recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
         assertEq(recipientToken, USDC_ADDRESS);
         assertEq(recipientSlippage, 9_900);
 
-        (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 kyotoUSDCBalanceBefore) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(kyotoPay));
+        (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
         emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
 
         vm.stopPrank();
 
-        (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 kyotoUSDCBalanceAfter) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(kyotoPay));
+        (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
         uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
@@ -859,7 +860,7 @@ contract DisburserPayEthMainnet is Fork {
 
         assertEq((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment);
         assertEq((userUSDCBalanceBefore - userUSDCBalanceAfter), _amountIn);
-        assertEq((kyotoUSDCBalanceAfter - kyotoUSDCBalanceBefore), adminFee);
+        assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee);
     }
 
     function testFork_Pay_PreferenceInputUsdcAndOutputWeth() public {
@@ -873,13 +874,13 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
         /**
          * Store before balances...
          */
-        (uint256 recipientWethBalanceBefore, uint256 kyotoWethBalanceBefore,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 userUSDCBalanceBefore = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
@@ -907,12 +908,12 @@ contract DisburserPayEthMainnet is Fork {
         emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
         // Correct fee for this pool is 0.05%, which is 500...
-        kyotoPay.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 500, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 500, _data);
 
         vm.stopPrank();
 
-        (uint256 recipientWethBalanceAfter, uint256 kyotoWethBalanceAfter,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 userUSDCBalanceAfter = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
@@ -923,7 +924,7 @@ contract DisburserPayEthMainnet is Fork {
 
         // Approximately equal within 0.25%.
         assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.0025e18);
-        assertApproxEqRel((kyotoWethBalanceAfter - kyotoWethBalanceBefore), adminFee, 0.0025e18);
+        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.0025e18);
     }
 
     function testFork_Pay_PreferenceInputWbtcAndOutputUSDC() public {
@@ -934,13 +935,13 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_800});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
         /**
          * Store before balances...
          */
-        (uint256 recipientUSDCBalanceBefore, uint256 kyotoUSDCBalanceBefore,) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore,) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 userWbtcBalanceBefore = WBTC_CONTRACT.balanceOf(RANDOM_USER);
 
@@ -973,12 +974,12 @@ contract DisburserPayEthMainnet is Fork {
         emit Payment(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, bytes32(uint256(0)));
 
         // Correct fee for this pool is 0.3%, which is 3000...
-        kyotoPay.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, 3000, bytes32(uint256(0)));
+        disburser.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, 3000, bytes32(uint256(0)));
 
         vm.stopPrank();
 
-        (uint256 recipientUSDCBalanceAfter, uint256 kyotoUSDCBalanceAfter,) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter,) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 userWbtcBalanceAfter = WBTC_CONTRACT.balanceOf(RANDOM_USER);
         uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
@@ -988,21 +989,21 @@ contract DisburserPayEthMainnet is Fork {
         // Approximately equal within 0.50%
         // recipientPayment = expectedUSDC - adminFee
         assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), (expectedUSDC - adminFee), 0.005e18);
-        assertApproxEqRel((kyotoUSDCBalanceAfter - kyotoUSDCBalanceBefore), adminFee, 0.005e18);
+        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.005e18);
     }
 
     function testFork_PayEth_NoPreferencesSet() public {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 10 ether;
 
-        (address _recipientToken, uint96 _recipientSlippage) = kyotoPay.recipientPreferences(RANDOM_RECIPIENT);
+        (address _recipientToken, uint96 _recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
         assertEq(_recipientToken, address(0));
         assertEq(_recipientSlippage, uint96(0));
 
         uint256 userEthBalanceBefore = RANDOM_USER.balance;
 
-        (uint256 recipientWethBalanceBefore, uint256 kyotoWethBalanceBefore,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         vm.startPrank(RANDOM_USER);
 
@@ -1010,12 +1011,12 @@ contract DisburserPayEthMainnet is Fork {
         emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
-        kyotoPay.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
 
         vm.stopPrank();
 
-        (uint256 recipientWethBalanceAfter, uint256 kyotoWethBalanceAfter,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
@@ -1028,7 +1029,7 @@ contract DisburserPayEthMainnet is Fork {
 
         assertEq((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment);
         assertEq((userEthBalanceBefore - RANDOM_USER.balance), _amountIn);
-        assertEq((kyotoWethBalanceAfter - kyotoWethBalanceBefore), adminFee);
+        assertEq((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee);
     }
 
     function testFork_PayEth_EthInputAndWethOutput() public {
@@ -1039,16 +1040,16 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
-        (address recipientToken, uint96 recipientSlippage) = kyotoPay.recipientPreferences(RANDOM_RECIPIENT);
+        (address recipientToken, uint96 recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
         assertEq(recipientToken, WETH_ADDRESS);
         assertEq(recipientSlippage, 9_900);
 
         uint256 userETHBalanceBefore = RANDOM_USER.balance;
 
-        (uint256 recipientWethBalanceBefore, uint256 kyotoWethBalanceBefore,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         vm.startPrank(RANDOM_USER);
 
@@ -1056,12 +1057,12 @@ contract DisburserPayEthMainnet is Fork {
         emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
-        kyotoPay.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
 
         vm.stopPrank();
 
-        (uint256 recipientWethBalanceAfter, uint256 kyotoWethBalanceAfter,) =
-            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
@@ -1074,7 +1075,7 @@ contract DisburserPayEthMainnet is Fork {
 
         assertEq((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment);
         assertEq((userETHBalanceBefore - RANDOM_USER.balance), _amountIn);
-        assertEq((kyotoWethBalanceAfter - kyotoWethBalanceBefore), adminFee);
+        assertEq((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee);
     }
 
     function testFork_PayEth_UsdcOutput() public {
@@ -1088,13 +1089,13 @@ contract DisburserPayEthMainnet is Fork {
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
         vm.prank(RANDOM_RECIPIENT);
-        kyotoPay.setPreferences(_preferences);
+        kyotoHub.setPreferences(_preferences);
 
         /**
          * Store before balances...
          */
-        (uint256 recipientUSDCBalanceBefore, uint256 kyotoUSDCBalanceBefore,) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore,) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 userEthBalanceBefore = RANDOM_USER.balance;
 
@@ -1123,12 +1124,12 @@ contract DisburserPayEthMainnet is Fork {
         emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Correct fee for this pool is 0.05%, which is 500...
-        kyotoPay.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 500, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 500, _data);
 
         vm.stopPrank();
 
-        (uint256 recipientUSDCBalanceAfter, uint256 kyotoUSDCBalanceAfter,) =
-            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(kyotoPay), address(0));
+        (uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter,) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
         uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = expectedUSDC - adminFee;
@@ -1137,7 +1138,7 @@ contract DisburserPayEthMainnet is Fork {
 
         // Approximately equal within 0.25%.
         assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.0025e18);
-        assertApproxEqRel((kyotoUSDCBalanceAfter - kyotoUSDCBalanceBefore), adminFee, 0.0025e18);
+        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.0025e18);
     }
 }
 

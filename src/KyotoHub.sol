@@ -15,14 +15,16 @@ import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 // - Need to make a constants library
 // - Add events
 // - Convert whitelisted tokens to enumerable set
+// - Change mappings to private...
 contract KyotoHub is IKyotoHub, Pausable, Ownable {
-
-    uint256 private constant DECIMALS = 10_000;
+    // Change to private
+    uint256 public constant DECIMALS = 10_000;
 
     // mapping for prferences
-    mapping(address => DataTypes.Preferences) private recipientPreferences;
-    mapping(address => bool) private whitelistedInputTokens;
-    mapping(address => bool) private whitelistedOutputTokens;
+    // Change to private and create custom getters...
+    mapping(address => DataTypes.Preferences) public recipientPreferences;
+    mapping(address => bool) public whitelistedInputTokens;
+    mapping(address => bool) public whitelistedOutputTokens;
 
     constructor() Ownable() {}
 
