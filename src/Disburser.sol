@@ -19,7 +19,7 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 //   - Add a receive function
 //   - Add EIP712 signatures 
 
-contract Disburser is HubOwnable, Pausable, IPayer {
+contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
 
     uint256 private constant DECIMALS = 10_000;

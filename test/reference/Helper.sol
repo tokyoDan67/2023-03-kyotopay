@@ -49,8 +49,4 @@ contract Helper {
      *
      */
     event Payment(address recipient, address indexed tokenAddress, uint256 indexed amountIn, bytes32 indexed data);
-
-    function getAdmin() external view returns (address) {
-        return address(this);
-    }
 }

@@ -24,6 +24,8 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
     mapping(address => bool) private whitelistedInputTokens;
     mapping(address => bool) private whitelistedOutputTokens;
 
+    constructor() Ownable() {}
+
     /**
      * @notice sets the sender's receiving preferences. 
      * @param _preferences the sender's given preferences

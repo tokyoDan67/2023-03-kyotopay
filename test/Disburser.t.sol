@@ -11,6 +11,7 @@ import {Errors} from "../src/libraries/Errors.sol";
 import {Fork} from "./reference/Fork.sol";
 import {Helper} from "./reference/Helper.sol";
 import {IWETH9} from "../src/interfaces/IWETH9.sol";
+import {KyotoHub} from "../src/KyotoHub.sol";
 import {Disburser} from "../src/Disburser.sol";
 import {MockERC20} from "./reference/MockERC20.sol";
 
@@ -40,46 +41,55 @@ contract DisburserHarness is Disburser {
     }
 }
 
-contract Constructor is Test, Helper {
-    Payer payer;
 
-    function test_RevertIf_InvalidAdminFee() public {
-        uint256 _invalidAdminFee = 600;
-        vm.expectRevert(Errors.InvalidAdminFee.selector);
-        payContract = new KyotoPay(_invalidAdminFee, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+contract DisburserConstructor is Test, Helper {
+    address kyotoHubAddress;
+    Disburser disburser;
+
+    function setUp() public {
+        kyotoHubAddress = address(new KyotoHub());
     }
 
-    function test_RevertIf_UniswapRouterZeroAddress() public {
+    function testConstructor_RevertIf_InvalidAdminFee() public {
+        uint256 _invalidAdminFee = 600;
+        vm.expectRevert(Errors.InvalidAdminFee.selector);
+        disburser = new Disburser(_invalidAdminFee, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+    }
+
+    function testConstructor_RevertIf_UniswapRouterZeroAddress() public {
         uint256 _validAdminFee = 100;
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract = new KyotoPay(_validAdminFee, address(0), WETH_ADDRESS);
+        disburser = new Disburser(_validAdminFee, kyotoHubAddress, address(0), WETH_ADDRESS);
     }
 
     function test_RevertIf_WethZeroAddress() public {
         uint256 _validAdminFee = 100;
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract = new KyotoPay(_validAdminFee, UNISWAP_SWAPROUTER_ADDRESS, address(0));
+        disburser = new Disburser(_validAdminFee, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, address(0));
     }
 
-    function test_ValidParams() public {
-        kyotoPayContract = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+    function testConstructor_ValidParams() public {
+        disburser = new Disburser(FEE, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
 
-        assertEq(payContract.adminFee(), FEE);
-        assertEq(kyotoPayContract.uniswapSwapRouterAddress(), UNISWAP_SWAPROUTER_ADDRESS);
+        assertEq(disburser.adminFee(), FEE);
+        assertEq(disburser.UNISWAP_SWAPROUTER_ADDRESS(), UNISWAP_SWAPROUTER_ADDRESS);
+        assertEq(disburser.KYOTO_HUB(), kyotoHubAddress);
     }
 }
 
 contract Setters is Test, Helper {
     using SafeERC20 for ERC20;
 
-    Pay payContract;
+    Disburser disburser;
+    KyotoHub kyotoHub;
     address mockERC20;
 
     function setUp() public {
-        kyotoPayContract = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+        kyotoHubAddress = address(new KyotoHub());
+        disburser = new Disburser(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
         mockERC20 = address(new MockERC20());
-        kyotoPayContract.addToInputWhitelist(mockERC20);
-        kyotoPayContract.addToOutputWhitelist(mockERC20);
+        kyotoHub.addToInputWhitelist(mockERC20);
+        kyotoHub.addToOutputWhitelist(mockERC20);
     }
 
     function test_SetPreferences() public {
@@ -89,9 +99,9 @@ contract Setters is Test, Helper {
             DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
 
         vm.prank(RANDOM_USER);
-        kyotoPayContract.setPreferences(_validPreferences);
+        kyotoHub.setPreferences(_validPreferences);
 
-        (address _userTokenAddress, uint96 _userSlippageAllowed) = kyotoPayContract.recipientPreferences(RANDOM_USER);
+        (address _userTokenAddress, uint96 _userSlippageAllowed) = kyotoHub.recipientPreferences(RANDOM_USER);
 
         assertEq(_userTokenAddress, mockERC20);
         assertEq(_userSlippageAllowed, _validSlippage);
@@ -104,13 +114,14 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
-        kyotoPayContract.setPreferences(_invalidSlippage);
+        KyotoHub.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
     }
 
+    // TO DO: Change decimals to a constants library
     function test_SetPreferences_RevertIf_SlippagePreferenceEqualToDecimals() public {
-        uint256 decimals256 = kyotoPayContract.DECIMALS();
+        uint256 decimals256 = kyotoHub.DECIMALS();
         uint96 invalidSlippage = uint96(decimals256);
 
         DataTypes.Preferences memory _invalidSlippage =
@@ -119,13 +130,13 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
-        kyotoPayContract.setPreferences(_invalidSlippage);
+        kyotoHub.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
     }
 
     function test_SetPreferences_RevertIf_SlippagePreferenceGreaterThanDecimals() public {
-        uint256 decimals256 = kyotoPayContract.DECIMALS();
+        uint256 decimals256 = kyotoHub.DECIMALS();
         uint96 invalidSlippage = uint96(decimals256 + 1);
 
         DataTypes.Preferences memory _invalidSlippage =
@@ -134,7 +145,7 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidRecipientSlippage.selector);
-        kyotoPayContract.setPreferences(_invalidSlippage);
+        kyotoHub.setPreferences(_invalidSlippage);
 
         vm.stopPrank();
     }
@@ -143,7 +154,7 @@ contract Setters is Test, Helper {
      * @dev DAI hasn't been added to whitelisted tokens yet
      */
     function test_SetPreference_RevertIf_InvalidTokenPreference() public {
-        assertFalse(kyotoPayContract.whitelistedOutputTokens(DAI_ADDRESS));
+        assertFalse(kyotoHub.whitelistedOutputTokens(DAI_ADDRESS));
 
         DataTypes.Preferences memory _invalidToken =
             DataTypes.Preferences({tokenAddress: DAI_ADDRESS, slippageAllowed: 100});
@@ -151,14 +162,14 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidRecipientToken.selector);
-        kyotoPayContract.setPreferences(_invalidToken);
+        kyotoHub.setPreferences(_invalidToken);
     }
 
     function test_Pause_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.pause();
+        kyotoHub.pause();
 
         vm.stopPrank();
     }
@@ -167,139 +178,119 @@ contract Setters is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.unpause();
+        kyotoHub.unpause();
 
         vm.stopPrank();
     }
 
     function test_Pause() public {
-        vm.prank(ADMIN);
-        kyotoPayContract.pause();
+        kyotoHub.pause();
     }
 
     function test_Unpause() public {
-        vm.startPrank(ADMIN);
-
-        kyotoPayContract.pause();
-        kyotoPayContract.unpause();
-
-        vm.stopPrank();
+        kyotoHub.pause();
+        kyotoHub.unpause();
     }
 
     function test_SetAdminFee() public {
         uint256 _validFee = 200;
 
-        vm.prank(ADMIN);
-        kyotoPayContract.setAdminFee(_validFee);
+        disburser.setAdminFee(_validFee);
 
-        assertEq(kyotoPayContract.adminFee(), _validFee);
+        assertEq(disburser.adminFee(), _validFee);
     }
 
     function test_SetAdminFee_RevertIf_GreaterThanMaxFee() public {
-        uint256 _maxFee = kyotoPayContract.MAX_ADMIN_FEE();
-
-        vm.startPrank(ADMIN);
+        uint256 _maxFee = disburser.MAX_ADMIN_FEE();
 
         vm.expectRevert(Errors.InvalidAdminFee.selector);
-        kyotoPayContract.setAdminFee(_maxFee + 1);
-
-        vm.stopPrank();
+        disburser.setAdminFee(_maxFee + 1);
     }
 
     function test_SetAdminFee_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.setAdminFee(200);
+        disburser.setAdminFee(200);
 
         vm.stopPrank();
     }
 }
 
-contract Whitelist is Test, Helper {
+contract KyotoHubWhitelist is Test, Helper {
     using SafeERC20 for ERC20;
 
-    KyotoPay kyotoPayContract;
+    KyotoHub kyotoHub;
     address mockERC20;
 
     function setUp() public {
-        kyotoPayContract = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+        kyotoHub = new KyotoHub();
         mockERC20 = address(new MockERC20());
     }
 
-    function test_addToInputWhitelist() public {
-        vm.prank(ADMIN);
-        kyotoPayContract.addToInputWhitelist(mockERC20);
-        assertTrue(kyotoPayContract.whitelistedInputTokens(mockERC20));
+    function test_AddToInputWhitelist() public {
+        kyotoHub.addToInputWhitelist(mockERC20);
+        assertTrue(kyotoHub.whitelistedInputTokens(mockERC20));
     }
 
-    function test_addToOutputWhitelist() public {
-        vm.prank(ADMIN);
-        kyotoPayContract.addToOutputWhitelist(mockERC20);
-        assertTrue(kyotoPayContract.whitelistedOutputTokens(mockERC20));
+    function test_AddToOutputWhitelist() public {
+        kyotoHub.addToOutputWhitelist(mockERC20);
+        assertTrue(kyotoHub.whitelistedOutputTokens(mockERC20));
     }
 
-    function test_addToInputWhiteList_RevertIf_NotOwner() public {
+    function test_AddToInputWhiteList_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.addToInputWhitelist(mockERC20);
+        kyotoHub.addToInputWhitelist(mockERC20);
 
         vm.stopPrank();
     }
 
-    function test_addToOutputWhitelist_RevertIf_NotOwner() public {
+    function test_AddToOutputWhitelist_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.addToOutputWhitelist(mockERC20);
+        kyotoHub.addToOutputWhitelist(mockERC20);
 
         vm.stopPrank();
     }
 
     function test_addToInputWhiteList_RevertIf_ZeroAddress() public {
-        vm.startPrank(ADMIN);
-
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract.addToInputWhitelist(address(0));
+        kyotoHub.addToInputWhitelist(address(0));
 
         vm.stopPrank();
     }
 
     function test_addToOutputWhiteList_RevertIf_ZeroAddress() public {
-        vm.startPrank(ADMIN);
-
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract.addToOutputWhitelist(address(0));
+        kyotoHub.addToOutputWhitelist(address(0));
 
         vm.stopPrank();
     }
 
     function test_revokeFromInputWhitelist() public {
-        vm.startPrank(ADMIN);
+        kyotoHub.addToInputWhitelist(mockERC20);
+        assertTrue(kyotoHub.whitelistedInputTokens(mockERC20));
 
-        kyotoPayContract.addToInputWhitelist(mockERC20);
-        assertTrue(kyotoPayContract.whitelistedInputTokens(mockERC20));
-
-        kyotoPayContract.revokeFromInputWhitelist(mockERC20);
-        assertFalse(kyotoPayContract.whitelistedInputTokens(mockERC20));
+        kyotoHub.revokeFromInputWhitelist(mockERC20);
+        assertFalse(kyotoHub.whitelistedInputTokens(mockERC20));
     }
 
     function test_revokeFromOutputWhitelist() public {
-        vm.startPrank(ADMIN);
+        kyotoHub.addToOutputWhitelist(mockERC20);
+        assertTrue(kyotoHub.whitelistedOutputTokens(mockERC20));
 
-        kyotoPayContract.addToOutputWhitelist(mockERC20);
-        assertTrue(kyotoPayContract.whitelistedOutputTokens(mockERC20));
-
-        kyotoPayContract.revokeFromOutputWhitelist(mockERC20);
-        assertFalse(kyotoPayContract.whitelistedOutputTokens(mockERC20));
+        kyotoHub.revokeFromOutputWhitelist(mockERC20);
+        assertFalse(kyotoHub.whitelistedOutputTokens(mockERC20));
     }
 
     function test_revokeFromInputWhiteList_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.revokeFromInputWhitelist(mockERC20);
+        kyotoHub.revokeFromInputWhitelist(mockERC20);
 
         vm.stopPrank();
     }
@@ -308,38 +299,33 @@ contract Whitelist is Test, Helper {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPayContract.revokeFromOutputWhitelist(mockERC20);
+        kyotoHub.revokeFromOutputWhitelist(mockERC20);
 
         vm.stopPrank();
     }
 
     function test_revokeFromInputWhiteListRevertIf_ZeroAddress() public {
-        vm.startPrank(ADMIN);
-
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract.revokeFromInputWhitelist(address(0));
-
-        vm.stopPrank();
+        kyotoHub.revokeFromInputWhitelist(address(0));
     }
 
     function test_revokeFromOutputWhiteListRevertIf_ZeroAddress() public {
-        vm.startPrank(ADMIN);
-
         vm.expectRevert(Errors.ZeroAddress.selector);
-        kyotoPayContract.revokeFromOutputWhitelist(address(0));
-
-        vm.stopPrank();
+        kyotoHub.revokeFromOutputWhitelist(address(0));
     }
 }
 
-contract InternalFunctions is Test, Helper {
+// This is
+contract DisburserHarnessInternalFunctions is Test, Helper {
     using SafeERC20 for ERC20;
 
-    KyotoPayWrapper kyotoPayWrapper;
+    KyotoHub kyotoHub;
+    DisburserHarness disburserHarness;
     ERC20 mockERC20;
 
     function setUp() public {
-        kyotoPayWrapper = new KyotoPayWrapper(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+        kyotoHub = new KyotoHub();
+        disburserHarness = new DisburserHarness(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
         mockERC20 = ERC20(new MockERC20());
         kyotoPayWrapper.addToInputWhitelist(address(mockERC20));
         kyotoPayWrapper.addToOutputWhitelist(address(mockERC20));
@@ -349,28 +335,28 @@ contract InternalFunctions is Test, Helper {
         mockERC20.safeTransfer(_recipient, _amount);
     }
 
-    function test_validatePreferences() public {
+    function test_ValidatePreferences() public {
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 100});
 
-        assertTrue(kyotoPayWrapper.validatePreferences(_preferences));
+        assertTrue(disburserHarness.validatePreferences(_preferences));
     }
 
-    function test_validatePreferences_RevertIf_SlippageZero() public {
+    function test_ValidatePreferences_RevertIf_SlippageZero() public {
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: address(mockERC20), slippageAllowed: 0});
 
-        assertFalse(kyotoPayWrapper.validatePreferences(_preferences));
+        assertFalse(disburserHarness.validatePreferences(_preferences));
     }
 
-    function test_validatePreferences_RevertIf_TokenNotWhitelisted() public {
+    function test_ValidatePreferences_RevertIf_TokenNotWhitelisted() public {
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 100});
 
-        assertFalse(kyotoPayWrapper.validatePreferences(_preferences));
+        assertFalse(disburserHarness.validatePreferences(_preferences));
     }
 
-    function test_getSenderFunds() public {
+    function test_GetSenderFunds() public {
         uint256 _toSend = 1_000 ether;
 
         _transferMockERC20(RANDOM_USER, _toSend);
@@ -379,28 +365,28 @@ contract InternalFunctions is Test, Helper {
 
         vm.startPrank(RANDOM_USER);
 
-        mockERC20.safeApprove(address(kyotoPayWrapper), _toSend);
-        kyotoPayWrapper.getSenderFunds(address(mockERC20), _toSend);
+        mockERC20.safeApprove(address(disburserHarness), _toSend);
+        disburserHarness.getSenderFunds(address(mockERC20), _toSend);
 
         vm.stopPrank();
 
-        assertEq(mockERC20.balanceOf(address(kyotoPayWrapper)), _toSend);
+        assertEq(mockERC20.balanceOf(address(disburserHarness)), _toSend);
         assertEq(mockERC20.balanceOf(RANDOM_USER), 0);
-        assertEq(mockERC20.allowance(RANDOM_USER, address(kyotoPayWrapper)), 0);
+        assertEq(mockERC20.allowance(RANDOM_USER, address(disburserHarness)), 0);
     }
 
-    function test_sendRecipientFunds() public {
-        uint256 _fee = kyotoPayWrapper.adminFee();
-        uint256 _decimals = kyotoPayWrapper.DECIMALS();
+    function test_SendRecipientFunds() public {
+        uint256 _fee = disburserHarness.adminFee();
+        uint256 _decimals = disburserHarness.DECIMALS();
         uint256 _toSend = 1_000 ether;
 
         uint256 feePayment = (_fee * _toSend) / _decimals;
 
-        _transferMockERC20(address(kyotoPayWrapper), _toSend);
+        _transferMockERC20(address(disburserHarness), _toSend);
 
-        kyotoPayWrapper.sendRecipientFunds(address(mockERC20), RANDOM_USER, _toSend);
+        disburserHarness.sendRecipientFunds(address(mockERC20), RANDOM_USER, _toSend);
 
-        assertEq(mockERC20.balanceOf(address(kyotoPayWrapper)), feePayment);
+        assertEq(mockERC20.balanceOf(address(disburserHarness)), feePayment);
         assertEq(mockERC20.balanceOf(RANDOM_USER), (_toSend - feePayment));
     }
 }
@@ -408,57 +394,66 @@ contract InternalFunctions is Test, Helper {
 contract Withdraw is Test, Helper {
     using SafeERC20 for ERC20;
 
-    KyotoPay kyotoPay;
+    KyotoHub kyotoHub;
+    Disburser disburser;
     ERC20 mockERC20;
 
     uint256 _toTransfer = 10 ether;
 
     function setUp() public {
-        kyotoPay = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+        kyotoHub = new KyotoHub();
+        disburser = new Disburser(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
         mockERC20 = ERC20(new MockERC20());
     }
 
-    function transferMock() internal {
-        mockERC20.safeTransfer(address(kyotoPay), _toTransfer);
-        assertEq(mockERC20.balanceOf(address(kyotoPay)), _toTransfer);
+    function _transferMockToDisburser() internal {
+        mockERC20.safeTransfer(address(disburser), _toTransfer);
+        assertEq(mockERC20.balanceOf(address(disburser)), _toTransfer);
     }
 
     function test_Withdraw() public {
-        transferMock();
+        _transferMockToDisburser();
 
-        kyotoPay.withdraw(address(mockERC20), _toTransfer);
-        assertEq(mockERC20.balanceOf(address(kyotoPay)), 0);
+        uint256 _adminBalanceBeforeWithdraw = mockERC20.balanceOf(address(this));
+
+        disburser.withdraw(address(mockERC20), _toTransfer);
+    
+        uint256 _adminBalanceAfterWithdraw = mockERC20.balanceOf(address(this)); 
+
+        assertEq(mockERC20.balanceOf(address(disburser)), 0);
+        assertEq((_adminBalanceBeforeWithdraw - _adminBalanceAfterWithdraw), _toTransfer);
     }
 
     function test_Withdraw_RevertIfZeroBalance() public {
         vm.expectRevert(Errors.ZeroBalance.selector);
-        kyotoPay.withdraw(address(mockERC20), _toTransfer);
+        disburser.withdraw(address(mockERC20), _toTransfer);
     }
 
     function test_Withdraw_RevertIf_NotOwner() public {
         vm.prank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        kyotoPay.withdraw(address(mockERC20), _toTransfer);
+        disburser.withdraw(address(mockERC20), _toTransfer);
     }
 
     function test_Withdraw_RevertIf_NotEnoughBalance() public {
-        transferMock();
+        _transferMockToDisburser();
 
-        uint256 totalBalance = mockERC20.balanceOf(address(kyotoPay));
+        uint256 totalBalance = mockERC20.balanceOf(address(disburser));
 
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        kyotoPay.withdraw(address(mockERC20), totalBalance + 1);
+        disburser.withdraw(address(mockERC20), totalBalance + 1);
     }
 }
 
 /**
  * @dev The Uniswap tests fork mainnet. Forking is much simpler than local deployment of all the Uniswap contracts
  */
-contract Pay is Fork {
+contract DisburserPayEthMainnet is Fork {
     using SafeERC20 for IERC20;
 
-    KyotoPay kyotoPay;
+    KyotoHub kyotoHub;
+    Disburser disburser;
 
     function setUp() public override {
         // Call Fork setup
@@ -466,22 +461,23 @@ contract Pay is Fork {
 
         // mainnetForkId is defined in reference/Fork.sol
         mainnetForkId = vm.createSelectFork(MAINNET_RPC_URL, MAINNET_FORK_BLOCK);
-        kyotoPay = new KyotoPay(FEE, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+        kyotoHub = new KyotoHub();
+        disburser = new Disburser(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
 
         /**
          * Add inputs
          */
-        kyotoPay.addToInputWhitelist(WBTC_ADDRESS);
-        kyotoPay.addToInputWhitelist(WETH_ADDRESS);
-        kyotoPay.addToInputWhitelist(DAI_ADDRESS);
-        kyotoPay.addToInputWhitelist(USDC_ADDRESS);
+        kyotoHub.addToInputWhitelist(WBTC_ADDRESS);
+        kyotoHub.addToInputWhitelist(WETH_ADDRESS);
+        kyotoHub.addToInputWhitelist(DAI_ADDRESS);
+        kyotoHub.addToInputWhitelist(USDC_ADDRESS);
 
         /**
          * Add outputs
          */
-        kyotoPay.addToOutputWhitelist(DAI_ADDRESS);
-        kyotoPay.addToOutputWhitelist(USDC_ADDRESS);
-        kyotoPay.addToOutputWhitelist(WETH_ADDRESS);
+        kyotoHub.addToOutputWhitelist(DAI_ADDRESS);
+        kyotoHub.addToOutputWhitelist(USDC_ADDRESS);
+        kyotoHub.addToOutputWhitelist(WETH_ADDRESS);
 
         /**
          * Give RANDOM_USER DAI, USDC, ETH, WBTC, and WETH
