@@ -22,7 +22,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
 
     // mapping for prferences
     // Change to private and create custom getters...
-    mapping(address => DataTypes.Preferences) public recipientPreferences;
+    mapping(address => DataTypes.Preferences) private recipientPreferences;
     mapping(address => bool) public whitelistedInputTokens;
     mapping(address => bool) public whitelistedOutputTokens;
 
@@ -105,7 +105,9 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
     //     return _validatePreferences(recipientPreferences[_recipient]);
     // }
 
-    function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory) {}
+    function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory) {
+        return recipientPreferences[_recipient];
+    }
 
     /**
      * @dev Admin function to pause payments

@@ -101,10 +101,10 @@ contract Setters is Test, Helper {
         vm.prank(RANDOM_USER);
         kyotoHub.setPreferences(_validPreferences);
 
-        (address _userTokenAddress, uint96 _userSlippageAllowed) = kyotoHub.recipientPreferences(RANDOM_USER);
+        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_USER);
 
-        assertEq(_userTokenAddress, mockERC20);
-        assertEq(_userSlippageAllowed, _validSlippage);
+        assertEq(_recipientPreferences.tokenAddress, mockERC20);
+        assertEq(_recipientPreferences.slippageAllowed, _validSlippage);
     }
 
     function test_SetPreferences_RevertIf_SlippagePreferenceZero() public {
@@ -210,7 +210,7 @@ contract Setters is Test, Helper {
     function test_SetAdminFee_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Errors.NotHubOwner.selector);
         disburser.setAdminFee(200);
 
         vm.stopPrank();
@@ -422,7 +422,7 @@ contract Withdraw is Test, Helper {
         uint256 _adminBalanceAfterWithdraw = mockERC20.balanceOf(address(this)); 
 
         assertEq(mockERC20.balanceOf(address(disburser)), 0);
-        assertEq((_adminBalanceBeforeWithdraw - _adminBalanceAfterWithdraw), _toTransfer);
+        assertEq((_adminBalanceAfterWithdraw - _adminBalanceBeforeWithdraw), _toTransfer);
     }
 
     function test_Withdraw_RevertIfZeroBalance() public {
@@ -433,7 +433,7 @@ contract Withdraw is Test, Helper {
     function test_Withdraw_RevertIf_NotOwner() public {
         vm.prank(RANDOM_USER);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Errors.NotHubOwner.selector);
         disburser.withdraw(address(mockERC20), _toTransfer);
     }
 
@@ -787,9 +787,9 @@ contract DisburserPayEthMainnet is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 100_000_000;
 
-        (address _recipientToken, uint96 _recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
-        assertEq(_recipientToken, address(0));
-        assertEq(_recipientSlippage, uint96(0));
+        DataTypes.Preferences memory _recipientPreferences  = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
+        assertEq(_recipientPreferences.tokenAddress, address(0));
+        assertEq(_recipientPreferences.slippageAllowed, uint96(0));
 
         (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
@@ -830,9 +830,9 @@ contract DisburserPayEthMainnet is Fork {
         vm.prank(RANDOM_RECIPIENT);
         kyotoHub.setPreferences(_preferences);
 
-        (address recipientToken, uint96 recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
-        assertEq(recipientToken, USDC_ADDRESS);
-        assertEq(recipientSlippage, 9_900);
+        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
+        assertEq(_recipientPreferences.tokenAddress, USDC_ADDRESS);
+        assertEq(_recipientPreferences.slippageAllowed, 9_900);
 
         (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
@@ -996,9 +996,9 @@ contract DisburserPayEthMainnet is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 10 ether;
 
-        (address _recipientToken, uint96 _recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
-        assertEq(_recipientToken, address(0));
-        assertEq(_recipientSlippage, uint96(0));
+        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
+        assertEq(_recipientPreferences.tokenAddress, address(0));
+        assertEq(_recipientPreferences.slippageAllowed, uint96(0));
 
         uint256 userEthBalanceBefore = RANDOM_USER.balance;
 
@@ -1042,9 +1042,9 @@ contract DisburserPayEthMainnet is Fork {
         vm.prank(RANDOM_RECIPIENT);
         kyotoHub.setPreferences(_preferences);
 
-        (address recipientToken, uint96 recipientSlippage) = kyotoHub.recipientPreferences(RANDOM_RECIPIENT);
-        assertEq(recipientToken, WETH_ADDRESS);
-        assertEq(recipientSlippage, 9_900);
+        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
+        assertEq(_recipientPreferences.tokenAddress, WETH_ADDRESS);
+        assertEq(_recipientPreferences.slippageAllowed, 9_900);
 
         uint256 userETHBalanceBefore = RANDOM_USER.balance;
 
