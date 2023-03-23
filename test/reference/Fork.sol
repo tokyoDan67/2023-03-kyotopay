@@ -110,26 +110,6 @@ contract Fork is Helper, Test {
     }
 
     /**
-     * @dev Can only be used when the vm is forked from mainnet
-     * Issues an amount of USDC given an address
-     * Requirements:
-     *     - The address cannot be address(0)
-     *     - The address cannot be blacklisted by USDC
-     */
-    function issueUSDC(address _address, uint256 _amount) internal {
-        // Set msg.sender temporarily to the owner of the USDC contracts
-        vm.startPrank(USDC_MASTER_MINTER);
-
-        IUSDC(USDC_ADDRESS).configureMinter(USDC_MASTER_MINTER, _amount);
-
-        IUSDC(USDC_ADDRESS).mint(_address, _amount);
-
-        assertGe(IUSDC(USDC_ADDRESS).balanceOf(_address), _amount);
-        // Set msg.sender to back to normal
-        vm.stopPrank();
-    }
-
-    /**
      * @dev Internal function to get token balances from 3 different addresses
      */
     function getTokenBalances(IERC20 token, address first, address second, address third)

@@ -11,6 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "../src/libraries/DataTypes.sol";
 import {Errors} from "../src/libraries/Errors.sol";
+import {Events} from "../src/libraries/Events.sol";
 import {Fork} from "./reference/Fork.sol";
 import {Helper} from "./reference/Helper.sol";
 import {IWETH9} from "../src/interfaces/IWETH9.sol";
@@ -23,7 +24,6 @@ contract Constructor is Test {
         assertEq(kyotoHub.owner(), address(this));
     }
 }
-
 
 contract Setters is Test, Helper {
     KyotoHub kyotoHub;
@@ -39,11 +39,19 @@ contract Setters is Test, Helper {
     function test_SetPreferences() public {
         uint96 _validSlippage = 100;
 
-        DataTypes.Preferences memory _validPreferences =
-            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
+        DataTypes.Preferences memory _validPreferences = DataTypes.Preferences({
+                tokenAddress: mockERC20, 
+                slippageAllowed: _validSlippage
+            });
 
-        vm.prank(RANDOM_USER);
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectEmit(true, true, true, true);
+        emit Events.PreferencesSet(RANDOM_USER, mockERC20, _validSlippage);
+
         kyotoHub.setPreferences(_validPreferences);
+
+        vm.stopPrank();
 
         DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_USER);
 
@@ -56,9 +64,10 @@ contract Setters is Test, Helper {
 
         uint96 _validSlippage = 100;
 
-        DataTypes.Preferences memory _validPreferences =
-            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
-
+        DataTypes.Preferences memory _validPreferences = DataTypes.Preferences({
+                tokenAddress: mockERC20, 
+                slippageAllowed: _validSlippage
+            });
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Pausable: paused");
@@ -114,7 +123,7 @@ contract Setters is Test, Helper {
      * @dev DAI hasn't been added to whitelisted tokens yet
      */
     function test_SetPreference_RevertIf_InvalidTokenPreference() public {
-        assertFalse(kyotoHub.whitelistedOutputTokens(DAI_ADDRESS));
+        assertFalse(kyotoHub.isWhitelistedOutputToken(DAI_ADDRESS));
 
         DataTypes.Preferences memory _invalidToken =
             DataTypes.Preferences({tokenAddress: DAI_ADDRESS, slippageAllowed: 100});
@@ -166,12 +175,12 @@ contract Admin is Test, Helper {
 
     function test_AddToInputWhitelist() public {
         kyotoHub.addToInputWhitelist(mockERC20);
-        assertTrue(kyotoHub.whitelistedInputTokens(mockERC20));
+        assertTrue(kyotoHub.isWhitelistedInputToken(mockERC20));
     }
 
     function test_AddToOutputWhitelist() public {
         kyotoHub.addToOutputWhitelist(mockERC20);
-        assertTrue(kyotoHub.whitelistedOutputTokens(mockERC20));
+        assertTrue(kyotoHub.isWhitelistedOutputToken(mockERC20));
     }
 
     function test_AddToInputWhiteList_RevertIf_NotOwner() public {
@@ -208,18 +217,18 @@ contract Admin is Test, Helper {
 
     function test_revokeFromInputWhitelist() public {
         kyotoHub.addToInputWhitelist(mockERC20);
-        assertTrue(kyotoHub.whitelistedInputTokens(mockERC20));
+        assertTrue(kyotoHub.isWhitelistedInputToken(mockERC20));
 
         kyotoHub.revokeFromInputWhitelist(mockERC20);
-        assertFalse(kyotoHub.whitelistedInputTokens(mockERC20));
+        assertFalse(kyotoHub.isWhitelistedInputToken(mockERC20));
     }
 
     function test_revokeFromOutputWhitelist() public {
         kyotoHub.addToOutputWhitelist(mockERC20);
-        assertTrue(kyotoHub.whitelistedOutputTokens(mockERC20));
+        assertTrue(kyotoHub.isWhitelistedOutputToken(mockERC20));
 
         kyotoHub.revokeFromOutputWhitelist(mockERC20);
-        assertFalse(kyotoHub.whitelistedOutputTokens(mockERC20));
+        assertFalse(kyotoHub.isWhitelistedOutputToken(mockERC20));
     }
 
     function test_revokeFromInputWhiteList_RevertIf_NotOwner() public {

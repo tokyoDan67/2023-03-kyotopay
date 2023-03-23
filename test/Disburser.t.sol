@@ -11,6 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {DataTypes} from "../src/libraries/DataTypes.sol";
 import {Errors} from "../src/libraries/Errors.sol";
+import {Events} from "../src/libraries/Events.sol";
 import {Fork} from "./reference/Fork.sol";
 import {Helper} from "./reference/Helper.sol";
 import {IWETH9} from "../src/interfaces/IWETH9.sol";
@@ -45,7 +46,7 @@ contract DisburserHarness is Disburser {
 }
 
 
-contract DisburserConstructor is Test, Helper {
+contract Constructor is Test, Helper {
     address kyotoHubAddress;
     Disburser disburser;
 
@@ -80,7 +81,7 @@ contract DisburserConstructor is Test, Helper {
     }
 }
 
-contract Setters is Test, Helper {
+contract Admin is Test, Helper {
     using SafeERC20 for ERC20;
 
     Disburser disburser;
@@ -109,13 +110,40 @@ contract Setters is Test, Helper {
         disburser.setAdminFee(_maxFee + 1);
     }
 
-    function test_SetAdminFee_RevertIf_NotOwner() public {
+    function test_SetAdminFee_RevertIf_NotHubOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.NotHubOwner.selector);
         disburser.setAdminFee(200);
 
         vm.stopPrank();
+    }
+
+    function test_Pause_RevertIf_NotHubOwner() public {
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        disburser.pause();
+
+        vm.stopPrank();
+    }
+
+    function test_Unpause_RevertIf_NotHubOwner() public {
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        disburser.unpause();
+
+        vm.stopPrank();
+    }
+
+    function test_Pause() public {
+        disburser.pause();
+    }
+
+    function test_Unpause() public {
+        disburser.pause();
+        disburser.unpause();
     }
 }
 
@@ -317,17 +345,17 @@ contract Pay is Fork {
         /**
          * Verify inputs
          */
-        assertTrue(kyotoHub.whitelistedInputTokens(WBTC_ADDRESS));
-        assertTrue(kyotoHub.whitelistedInputTokens(WETH_ADDRESS));
-        assertTrue(kyotoHub.whitelistedInputTokens(DAI_ADDRESS));
-        assertTrue(kyotoHub.whitelistedInputTokens(USDC_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedInputToken(WBTC_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedInputToken(WETH_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedInputToken(DAI_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedInputToken(USDC_ADDRESS));
 
         /**
          * Verify outputs
          */
-        assertTrue(kyotoHub.whitelistedOutputTokens(WETH_ADDRESS));
-        assertTrue(kyotoHub.whitelistedOutputTokens(DAI_ADDRESS));
-        assertTrue(kyotoHub.whitelistedOutputTokens(USDC_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedOutputToken(WETH_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedOutputToken(DAI_ADDRESS));
+        assertTrue(kyotoHub.isWhitelistedOutputToken(USDC_ADDRESS));
 
         /**
          * Verify balances
@@ -602,7 +630,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
         disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
 
@@ -645,7 +673,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
         disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
 
@@ -710,7 +738,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
         // Correct fee for this pool is 0.05%, which is 500...
         disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 500, _data);
@@ -776,7 +804,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, bytes32(uint256(0)));
+        emit Events.Payment(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, bytes32(uint256(0)));
 
         // Correct fee for this pool is 0.3%, which is 3000...
         disburser.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, 3000, bytes32(uint256(0)));
@@ -813,7 +841,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
         disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
@@ -859,7 +887,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
         disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
@@ -926,7 +954,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Correct fee for this pool is 0.05%, which is 500...
         disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 500, _data);

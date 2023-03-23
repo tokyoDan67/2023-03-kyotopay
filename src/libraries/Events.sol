@@ -8,10 +8,28 @@ library Events {
     ////////////////////
     ///   KyotoHub   ///
     ////////////////////
-    event AddedWhitelistedInputToken(address indexed token);
-    event AddedWhitelistedOutputToken(address indexed token);
-    event RevokedWhitelistedInputToken(address indexed token);
-    event RevokedWhitelistedOutputToken(address indexed token);
+
+    /**
+     * Emitted when an input token is whitelisted
+     */
+    event AddedWhitelistedInputToken(address token);
+
+    /**
+     * Emitted when an output token is whitelisted
+     */
+    event AddedWhitelistedOutputToken(address token);
+
+    /**
+     * Emitted when an input token is removed from the whitelist
+     */
+    event RevokedWhitelistedInputToken(address token);
+
+    /**
+     * Emitted when an output token is removed from the whitelist
+     */ 
+    event RevokedWhitelistedOutputToken(address token);
+
+    event PreferencesSet(address indexed msgSender, address token, uint96 slippageAllowed);
 
     /////////////////
     ///   Payer   ///
@@ -20,6 +38,5 @@ library Events {
     /**
      * Emitted to pass data from payment function
      */
-    event Payment(address recipient, address indexed tokenAddress, uint256 indexed amountIn, bytes32 indexed data);
-
+    event Payment(address indexed recipient, address indexed tokenAddress, uint256 amountIn, bytes32 indexed data);
 }

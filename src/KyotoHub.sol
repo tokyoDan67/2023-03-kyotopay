@@ -7,6 +7,7 @@ pragma solidity =0.8.17;
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Errors} from "./libraries/Errors.sol";
+import {Events} from "./libraries/Events.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
@@ -21,8 +22,8 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     // mapping for prferences
     // Change to private and create custom getters...
     mapping(address => DataTypes.Preferences) private recipientPreferences;
-    mapping(address => bool) public whitelistedInputTokens;
-    mapping(address => bool) public whitelistedOutputTokens;
+    mapping(address => bool) private whitelistedInputTokens;
+    mapping(address => bool) private whitelistedOutputTokens;
 
     constructor() Ownable2Step() {}
 
@@ -41,6 +42,8 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
         if (!(whitelistedOutputTokens[_preferences.tokenAddress])) revert Errors.InvalidRecipientToken();
 
         recipientPreferences[msg.sender] = _preferences;
+
+        emit Events.PreferencesSet(msg.sender, _preferences.tokenAddress, _preferences.slippageAllowed);
     }
 
     /**
@@ -53,6 +56,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     function addToInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
         whitelistedInputTokens[_token] = true;
+        emit Events.AddedWhitelistedInputToken(_token);
     }
 
     /**
@@ -65,6 +69,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     function revokeFromInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
         delete whitelistedInputTokens[_token];
+        emit Events.RevokedWhitelistedInputToken(_token);
     }
 
     /**
@@ -77,6 +82,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     function addToOutputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
         whitelistedOutputTokens[_token] = true;
+        emit Events.AddedWhitelistedOutputToken(_token);
     }
 
     /**
@@ -89,6 +95,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     function revokeFromOutputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
         delete whitelistedOutputTokens[_token];
+        emit Events.RevokedWhitelistedOutputToken(_token);
     }
 
     function isWhitelistedInputToken(address _token) external view returns(bool){
@@ -99,9 +106,6 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
         return whitelistedOutputTokens[_token];
     }
 
-    // function validateRecipientPreferences(address _recipient) external view returns (bool) {
-    //     return _validatePreferences(recipientPreferences[_recipient]);
-    // }
 
     function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory) {
         return recipientPreferences[_recipient];
