@@ -104,11 +104,9 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         _pay(_recipient, _wethAddress, _msgValue, _amountOut, _uniFee, _data);
     }
 
-    /*******************************
-     *
-     *       Internal functions
-     *
-     ******************************/
+    //////////////////////////////////
+    //      Internal Functions      //
+    //////////////////////////////////
 
      /**
       * @dev validates preferences, gets recipient funds, executes the UNI swap, sends funds to recipient
@@ -232,11 +230,9 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         emit Events.Payment(_recipient, _tokenIn, _amountIn, _data);
     }
 
-    /*******************************
-     *
-     *       Admin functions
-     *
-     ******************************/
+    ///////////////////////////////
+    //      Admin Functions      //
+    ///////////////////////////////
 
     /**
      * @dev Admin function to set the fee

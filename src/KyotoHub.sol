@@ -4,19 +4,17 @@ pragma solidity =0.8.17;
 /// @title Kyoto Hub
 /// Protocol Version 1.1 
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
 // To Do: 
-// - Need to make 2 step ownable...
-// - Need to make a constants library
 // - Add events
 // - Convert whitelisted tokens to enumerable set
 // - Change mappings to private...
-contract KyotoHub is IKyotoHub, Pausable, Ownable {
+contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     // Change to private
     uint256 public constant DECIMALS = 10_000;
 
@@ -26,7 +24,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable {
     mapping(address => bool) public whitelistedInputTokens;
     mapping(address => bool) public whitelistedOutputTokens;
 
-    constructor() Ownable() {}
+    constructor() Ownable2Step() {}
 
     /**
      * @notice sets the sender's receiving preferences. 

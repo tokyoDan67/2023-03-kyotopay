@@ -20,17 +20,6 @@ contract Helper {
     address constant LOOKS_ADDRESS = 0xf4d2888d29D722226FafA5d9B24F9164c092421E;
     address ADMIN = address(this);
 
-    // EOA that has ~$39 million in DAI
-    // Reference: https://etherscan.io/address/0xb527a981e1d415af696936b3174f2d7ac8d11369
-    address constant DAI_HOLDER = 0xb527a981e1d415AF696936B3174f2d7aC8D11369;
-
-    // EOA that has ~$273 million in WBTC
-    // Reference: https://etherscan.io/address/0x218b95be3ed99141b0144dba6ce88807c4ad7c09
-    address constant WBTC_HOLDER = 0x218B95BE3ed99141b0144Dba6cE88807c4AD7C09;
-
-    // Reference: https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48#readProxyContract#F14
-    address constant USDC_MASTER_MINTER = 0xE982615d461DD5cD06575BbeA87624fda4e3de17;
-
     // Reference: https://etherscan.io/token/0x6b175474e89094c44da98b954eedeac495271d0f#readContract#F5
     uint256 constant DAI_DECIMALS = 18;
 
