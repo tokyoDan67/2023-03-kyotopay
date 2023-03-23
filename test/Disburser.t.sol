@@ -54,30 +54,35 @@ contract Constructor is Test, Helper {
         kyotoHubAddress = address(new KyotoHub());
     }
 
-    function testConstructor_RevertIf_InvalidAdminFee() public {
+    function test_Constructor() public {
+        disburser = new Disburser(FEE, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+
+        assertEq(disburser.getAdminFee(), FEE);
+        assertEq(disburser.UNISWAP_SWAP_ROUTER_ADDRESS(), UNISWAP_SWAPROUTER_ADDRESS);
+        assertEq(disburser.WETH_ADDRESS(), WETH_ADDRESS);
+        assertEq(address(disburser.KYOTO_HUB()), kyotoHubAddress);
+    }
+    function test_Constructor_RevertIf_KyotoHubZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        disburser = new Disburser(FEE, address(0), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
+    }
+
+    function test_Constructor_RevertIf_InvalidAdminFee() public {
         uint256 _invalidAdminFee = 600;
         vm.expectRevert(Errors.InvalidAdminFee.selector);
         disburser = new Disburser(_invalidAdminFee, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
     }
 
-    function testConstructor_RevertIf_UniswapRouterZeroAddress() public {
+    function test_Constructor_RevertIf_UniswapRouterZeroAddress() public {
         uint256 _validAdminFee = 100;
         vm.expectRevert(Errors.ZeroAddress.selector);
         disburser = new Disburser(_validAdminFee, kyotoHubAddress, address(0), WETH_ADDRESS);
     }
 
-    function test_RevertIf_WethZeroAddress() public {
+    function test_Constructor_RevertIf_WethZeroAddress() public {
         uint256 _validAdminFee = 100;
         vm.expectRevert(Errors.ZeroAddress.selector);
         disburser = new Disburser(_validAdminFee, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, address(0));
-    }
-
-    function testConstructor_ValidParams() public {
-        disburser = new Disburser(FEE, kyotoHubAddress, UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
-
-        assertEq(disburser.adminFee(), FEE);
-        assertEq(disburser.UNISWAP_SWAP_ROUTER_ADDRESS(), UNISWAP_SWAPROUTER_ADDRESS);
-        assertEq(address(disburser.KYOTO_HUB()), kyotoHubAddress);
     }
 }
 
@@ -97,15 +102,12 @@ contract Admin is Test, Helper {
     }
     function test_SetAdminFee() public {
         uint256 _validFee = 200;
-
         disburser.setAdminFee(_validFee);
-
-        assertEq(disburser.adminFee(), _validFee);
+        assertEq(disburser.getAdminFee(), _validFee);
     }
 
     function test_SetAdminFee_RevertIf_GreaterThanMaxFee() public {
         uint256 _maxFee = disburser.MAX_ADMIN_FEE();
-
         vm.expectRevert(Errors.InvalidAdminFee.selector);
         disburser.setAdminFee(_maxFee + 1);
     }
@@ -122,7 +124,7 @@ contract Admin is Test, Helper {
     function test_Pause_RevertIf_NotHubOwner() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Errors.NotHubOwner.selector);
         disburser.pause();
 
         vm.stopPrank();
@@ -131,7 +133,7 @@ contract Admin is Test, Helper {
     function test_Unpause_RevertIf_NotHubOwner() public {
         vm.startPrank(RANDOM_USER);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Errors.NotHubOwner.selector);
         disburser.unpause();
 
         vm.stopPrank();
@@ -207,7 +209,7 @@ contract InternalFunctions is Test, Helper {
     }
 
     function test_SendRecipientFunds() public {
-        uint256 _fee = disburserHarness.adminFee();
+        uint256 _fee = disburserHarness.getAdminFee();
         uint256 _decimals = disburserHarness.DECIMALS();
         uint256 _toSend = 1_000 ether;
 
@@ -377,7 +379,7 @@ contract Pay is Fork {
         /**
          * Verify constants in Helper
          */
-        assertEq(FEE, disburser.adminFee());
+        assertEq(FEE, disburser.getAdminFee());
         assertEq(KYOTOPAY_DECIMALS, disburser.DECIMALS());
     }
 

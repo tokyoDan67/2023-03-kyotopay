@@ -174,12 +174,20 @@ contract Admin is Test, Helper {
     }
 
     function test_AddToInputWhitelist() public {
+        vm.expectEmit(true, true, true, true);
+        emit Events.AddedWhitelistedInputToken(mockERC20);
+
         kyotoHub.addToInputWhitelist(mockERC20);
+
         assertTrue(kyotoHub.isWhitelistedInputToken(mockERC20));
     }
 
     function test_AddToOutputWhitelist() public {
+        vm.expectEmit(true, true, true, true);
+        emit Events.AddedWhitelistedOutputToken(mockERC20);
+
         kyotoHub.addToOutputWhitelist(mockERC20);
+
         assertTrue(kyotoHub.isWhitelistedOutputToken(mockERC20));
     }
 
@@ -201,37 +209,43 @@ contract Admin is Test, Helper {
         vm.stopPrank();
     }
 
-    function test_addToInputWhiteList_RevertIf_ZeroAddress() public {
+    function test_AddToInputWhiteList_RevertIf_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoHub.addToInputWhitelist(address(0));
 
         vm.stopPrank();
     }
 
-    function test_addToOutputWhiteList_RevertIf_ZeroAddress() public {
+    function test_AddToOutputWhiteList_RevertIf_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoHub.addToOutputWhitelist(address(0));
 
         vm.stopPrank();
     }
 
-    function test_revokeFromInputWhitelist() public {
+    function test_RevokeFromInputWhitelist() public {
         kyotoHub.addToInputWhitelist(mockERC20);
         assertTrue(kyotoHub.isWhitelistedInputToken(mockERC20));
+
+        vm.expectEmit(true, true, true, true);
+        emit Events.RevokedWhitelistedInputToken(mockERC20);
 
         kyotoHub.revokeFromInputWhitelist(mockERC20);
         assertFalse(kyotoHub.isWhitelistedInputToken(mockERC20));
     }
 
-    function test_revokeFromOutputWhitelist() public {
+    function test_RevokeFromOutputWhitelist() public {
         kyotoHub.addToOutputWhitelist(mockERC20);
         assertTrue(kyotoHub.isWhitelistedOutputToken(mockERC20));
+
+        vm.expectEmit(true, true, true, true);
+        emit Events.RevokedWhitelistedOutputToken(mockERC20);
 
         kyotoHub.revokeFromOutputWhitelist(mockERC20);
         assertFalse(kyotoHub.isWhitelistedOutputToken(mockERC20));
     }
 
-    function test_revokeFromInputWhiteList_RevertIf_NotOwner() public {
+    function test_RevokeFromInputWhiteList_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
@@ -240,7 +254,7 @@ contract Admin is Test, Helper {
         vm.stopPrank();
     }
 
-    function test_revokeFromOutputWhiteList_RevertIf_NotOwner() public {
+    function test_RevokeFromOutputWhiteList_RevertIf_NotOwner() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Ownable: caller is not the owner");
@@ -249,13 +263,27 @@ contract Admin is Test, Helper {
         vm.stopPrank();
     }
 
-    function test_revokeFromInputWhiteListRevertIf_ZeroAddress() public {
+    function test_RevokeFromInputWhiteListRevertIf_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoHub.revokeFromInputWhitelist(address(0));
     }
 
-    function test_revokeFromOutputWhiteListRevertIf_ZeroAddress() public {
+    function test_RevokeFromOutputWhiteListRevertIf_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         kyotoHub.revokeFromOutputWhitelist(address(0));
+    }
+
+    function test_TransferOwnership() public {
+        // Transfer ownership to the random user
+        kyotoHub.transferOwnership(RANDOM_USER);
+
+        assertEq(kyotoHub.owner(), address(this));
+        assertEq(kyotoHub.pendingOwner(), RANDOM_USER);
+        
+        vm.prank(RANDOM_USER);
+        kyotoHub.acceptOwnership();
+
+        assertEq(kyotoHub.owner(), RANDOM_USER);
+        assertEq(kyotoHub.pendingOwner(), address(0));
     }
 }

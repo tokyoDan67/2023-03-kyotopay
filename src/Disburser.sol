@@ -23,20 +23,22 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
 
-    uint256 public constant DECIMALS = 10_000;
     // MAX_ADMIN_FEE is denominated in DECIMALs.  I.e. 500 = 5%
     uint256 public constant MAX_ADMIN_FEE = 500;
 
+    // Decimals is the same as KyotoHubs, 10_000
+    uint256 public immutable DECIMALS;
     address public immutable UNISWAP_SWAP_ROUTER_ADDRESS;
     address public immutable WETH_ADDRESS;
 
     // adminFee is denominated in DECIMALS.  For example, a value for fee of 200 = 2%
-    uint256 public adminFee;
+    uint256 private adminFee;
     constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress) HubOwnable(_kyotoHub) {
         if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert Errors.ZeroAddress();
         if (_wethAddress == address(0)) revert Errors.ZeroAddress();
 
+        DECIMALS = KYOTO_HUB.DECIMALS();
         adminFee = _adminFee;
         UNISWAP_SWAP_ROUTER_ADDRESS = _uniswapSwapRouterAddress;
         WETH_ADDRESS = _wethAddress;
@@ -228,6 +230,14 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      // (_recipient, _tokenIn, _amountIn, _data);
     function _emitPaymentEvent(address _recipient, address _tokenIn, uint256 _amountIn, bytes32 _data) internal {
         emit Events.Payment(_recipient, _tokenIn, _amountIn, _data);
+    }
+
+    //////////////////////////////
+    //      View Functions      //
+    //////////////////////////////
+
+    function getAdminFee() external view returns(uint256) {
+        return adminFee;
     }
 
     ///////////////////////////////

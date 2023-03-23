@@ -12,11 +12,8 @@ import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
 // To Do: 
-// - Add events
 // - Convert whitelisted tokens to enumerable set
-// - Change mappings to private...
 contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
-    // Change to private
     uint256 public constant DECIMALS = 10_000;
 
     // mapping for prferences
@@ -60,19 +57,6 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     }
 
     /**
-     * @dev Admin function to revoke a token from the input whitelist
-     * @param _token the address of the token
-     * Requirements:
-     *  - '_token" != address(0)
-     *  - msg.sender is the owner
-     */
-    function revokeFromInputWhitelist(address _token) external onlyOwner {
-        if (_token == address(0)) revert Errors.ZeroAddress();
-        delete whitelistedInputTokens[_token];
-        emit Events.RevokedWhitelistedInputToken(_token);
-    }
-
-    /**
      * @dev Admin function to add a token to the output whitelist
      * @param _token the address of the token
      * Requirements:
@@ -83,6 +67,20 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
         if (_token == address(0)) revert Errors.ZeroAddress();
         whitelistedOutputTokens[_token] = true;
         emit Events.AddedWhitelistedOutputToken(_token);
+    }
+
+
+    /**
+     * @dev Admin function to revoke a token from the input whitelist
+     * @param _token the address of the token
+     * Requirements:
+     *  - '_token" != address(0)
+     *  - msg.sender is the owner
+     */
+    function revokeFromInputWhitelist(address _token) external onlyOwner {
+        if (_token == address(0)) revert Errors.ZeroAddress();
+        delete whitelistedInputTokens[_token];
+        emit Events.RevokedWhitelistedInputToken(_token);
     }
 
     /**
