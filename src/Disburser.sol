@@ -18,6 +18,7 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 // To Do: 
 //   - Add a receive function
 //   - Add EIP712 signatures 
+//   - Update the deadline to be passed in by the frontend
 
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
@@ -191,7 +192,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         uint24 _uniFee
     ) internal view {
         // To Do: Make into custom error. Need to review logic operations...
-        require(((_uniFee == 100) || (_uniFee == 500) || (_uniFee == 3000) || (_uniFee == 10_000)), "Invalid Uni Fee");
+        if((_uniFee != 100) && (_uniFee != 500) && (_uniFee != 3000) && (_uniFee != 10_000)) revert Errors.InvalidUniFee();
         if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert Errors.InvalidToken();
         if (_recipient == address(0)) revert Errors.ZeroAddress();
         if (_amountIn == 0 || _amountOut == 0) revert Errors.InvalidAmount();

@@ -51,6 +51,8 @@ library Errors {
      */
     error InvalidToken();
 
+    error InvalidUniFee();
+
     /**
      * address(this) has a token balance of 0 for the passed in '_tokenAddress"
      */

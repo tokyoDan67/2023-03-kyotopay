@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
+/// @title KyotoPay
+/// Version 1.1
+
 import "forge-std/Test.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -562,7 +565,7 @@ contract DisburserPayEthMainnet is Fork {
 
         uint24 _invalidUniFee = 333;
 
-        vm.expectRevert("Invalid Uni Fee");
+        vm.expectRevert(Errors.InvalidUniFee.selector);
         disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
@@ -737,7 +740,7 @@ contract DisburserPayEthMainnet is Fork {
 
         uint24 _invalidUniFee = 333;
 
-        vm.expectRevert("Invalid Uni Fee");
+        vm.expectRevert(Errors.InvalidUniFee.selector);
         disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
