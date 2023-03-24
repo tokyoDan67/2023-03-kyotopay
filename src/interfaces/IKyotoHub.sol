@@ -4,6 +4,7 @@ pragma solidity =0.8.17;
 /// @title IPreferences
 
 import {DataTypes} from "../libraries/DataTypes.sol";
+
 interface IKyotoHub {
     ///////////////////////////
     ///   Admin Functions   ///
@@ -20,7 +21,7 @@ interface IKyotoHub {
     ////////////////////////////////////
 
     /**
-     * Sets the sender's receiving preferences. 
+     * Sets the sender's receiving preferences.
      * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage
      * Requirements:
      *  - '_preferences.slippageAllowed' is not 0% (i.e. >= 10,000) or 100% (i.e. 0)
@@ -31,8 +32,7 @@ interface IKyotoHub {
     //////////////////////////
     ///   View Functions   ///
     //////////////////////////
-    function isWhitelistedInputToken(address) external view returns(bool);
-    function isWhitelistedOutputToken(address) external view returns(bool);
+    function isWhitelistedInputToken(address) external view returns (bool);
+    function isWhitelistedOutputToken(address) external view returns (bool);
     function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory);
 }
-

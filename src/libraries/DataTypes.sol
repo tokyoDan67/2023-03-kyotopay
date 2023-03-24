@@ -9,4 +9,4 @@ library DataTypes {
         address tokenAddress;
         uint96 slippageAllowed;
     }
-} 
+}

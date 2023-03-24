@@ -39,10 +39,8 @@ contract Setters is Test, Helper {
     function test_SetPreferences() public {
         uint96 _validSlippage = 100;
 
-        DataTypes.Preferences memory _validPreferences = DataTypes.Preferences({
-                tokenAddress: mockERC20, 
-                slippageAllowed: _validSlippage
-            });
+        DataTypes.Preferences memory _validPreferences =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
 
         vm.startPrank(RANDOM_USER);
 
@@ -64,10 +62,8 @@ contract Setters is Test, Helper {
 
         uint96 _validSlippage = 100;
 
-        DataTypes.Preferences memory _validPreferences = DataTypes.Preferences({
-                tokenAddress: mockERC20, 
-                slippageAllowed: _validSlippage
-            });
+        DataTypes.Preferences memory _validPreferences =
+            DataTypes.Preferences({tokenAddress: mockERC20, slippageAllowed: _validSlippage});
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Pausable: paused");
@@ -202,7 +198,7 @@ contract Admin is Test, Helper {
         bool containsInvalidAsset = false;
         for (uint256 i; i < inputAssets.length; ++i) {
             if (inputAssets[i] != USDC_ADDRESS && inputAssets[i] != DAI_ADDRESS && inputAssets[i] != WETH_ADDRESS) {
-                 containsInvalidAsset = true;
+                containsInvalidAsset = true;
             }
         }
         assertFalse(containsInvalidAsset);
@@ -219,14 +215,14 @@ contract Admin is Test, Helper {
         bool containsInvalidAsset = false;
         for (uint256 i; i < outputAssets.length; ++i) {
             if (outputAssets[i] != USDC_ADDRESS && outputAssets[i] != DAI_ADDRESS && outputAssets[i] != WETH_ADDRESS) {
-                 containsInvalidAsset = true;
+                containsInvalidAsset = true;
             }
         }
         assertFalse(containsInvalidAsset);
     }
 
     function test_InputWhiteList_NoTokens() public {
-        address[] memory inputAssets = kyotoHub.getWhitelistedInputTokens(); 
+        address[] memory inputAssets = kyotoHub.getWhitelistedInputTokens();
         assertEq(inputAssets.length, 0);
     }
 
@@ -323,7 +319,7 @@ contract Admin is Test, Helper {
 
         assertEq(kyotoHub.owner(), address(this));
         assertEq(kyotoHub.pendingOwner(), RANDOM_USER);
-        
+
         vm.prank(RANDOM_USER);
         kyotoHub.acceptOwnership();
 

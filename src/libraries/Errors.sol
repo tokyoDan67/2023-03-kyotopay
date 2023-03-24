@@ -55,7 +55,7 @@ library Errors {
      *  Argument '_tokenIn' is not a valid input token
      */
     error InvalidToken();
-    
+
     /**
      * Argument '_uniFee' is not a valid Uniswap fee (i.e. not equal to 0.01%, 0.05%, 0.3%, or 1%)
      */
@@ -65,4 +65,4 @@ library Errors {
      * address(this) has a token balance of 0 for the passed in '_tokenAddress"
      */
     error ZeroBalance();
-} 
+}

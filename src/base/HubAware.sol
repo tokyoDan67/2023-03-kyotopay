@@ -8,7 +8,8 @@ import {Errors} from "../libraries/Errors.sol";
 import {KyotoHub} from "../KyotoHub.sol";
 
 abstract contract HubAware {
-    KyotoHub immutable public KYOTO_HUB;
+    KyotoHub public immutable KYOTO_HUB;
+
     constructor(address _hub) {
         if (_hub == address(0)) revert Errors.ZeroAddress();
         KYOTO_HUB = KyotoHub(_hub);

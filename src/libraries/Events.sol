@@ -26,7 +26,7 @@ library Events {
 
     /**
      * Emitted when an output token is removed from the whitelist
-     */ 
+     */
     event RevokedWhitelistedOutputToken(address token);
 
     event PreferencesSet(address indexed msgSender, address token, uint96 slippageAllowed);

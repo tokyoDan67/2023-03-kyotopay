@@ -14,22 +14,30 @@ interface IDisburser {
 
     /**
      * Pays a recipient in their preferred token from a given input token
-     * Requirements: 
+     * Requirements:
      *  - '_recipient' != address(0)
      *  - '_tokenIn' is a valid input token
-     *  - '_amountIn' != 0 
+     *  - '_amountIn' != 0
      *  - 'amountOut' != 0
      *  - '_uniFee' is a valid Uniswap pool fee
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      *  - The user's token balance > '_amountIn'
      *  - The user has approve the contract to transfer their tokens
-     */ 
-    function pay( address _recipient, address _tokenIn, uint256 _amountIn, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data) external;
+     */
+    function pay(
+        address _recipient,
+        address _tokenIn,
+        uint256 _amountIn,
+        uint256 _amountOut,
+        uint256 _deadline,
+        uint24 _uniFee,
+        bytes32 _data
+    ) external;
 
     /**
      * Pays a recipient in their preferred token from the given ether
      * Note: if the user has not set their preferences, they will receive WETH and not ETH
-     * Requirements: 
+     * Requirements:
      *  - '_recipient' != address(0)
      *  -  WETH is a whitelisted input
      *  -  msg.value > 0
@@ -38,5 +46,7 @@ interface IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data) external payable;
+    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data)
+        external
+        payable;
 }

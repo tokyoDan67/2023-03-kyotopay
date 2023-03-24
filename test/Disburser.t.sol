@@ -25,7 +25,6 @@ import {MockERC20} from "./reference/MockERC20.sol";
 //      https://book.getfoundry.sh/tutorials/best-practices     //
 //////////////////////////////////////////////////////////////////
 
-
 // Harness contract for internal functions
 contract DisburserHarness is Disburser {
     constructor(uint256 _fee, address _hub, address _uniswapSwapRouterAddress, address _wethAddress)
@@ -45,7 +44,6 @@ contract DisburserHarness is Disburser {
     }
 }
 
-
 contract Constructor is Test, Helper {
     address kyotoHubAddress;
     Disburser disburser;
@@ -62,6 +60,7 @@ contract Constructor is Test, Helper {
         assertEq(disburser.WETH_ADDRESS(), WETH_ADDRESS);
         assertEq(address(disburser.KYOTO_HUB()), kyotoHubAddress);
     }
+
     function test_Constructor_RevertIf_KyotoHubZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         disburser = new Disburser(FEE, address(0), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
@@ -100,6 +99,7 @@ contract Admin is Test, Helper {
         kyotoHub.addToInputWhitelist(mockERC20);
         kyotoHub.addToOutputWhitelist(mockERC20);
     }
+
     function test_SetAdminFee() public {
         uint256 _validFee = 200;
         disburser.setAdminFee(_validFee);
@@ -251,8 +251,8 @@ contract Withdraw is Test, Helper {
 
         vm.prank(ADMIN);
         disburser.withdraw(address(mockERC20), _toTransfer);
-    
-        uint256 _adminBalanceAfterWithdraw = mockERC20.balanceOf(address(this)); 
+
+        uint256 _adminBalanceAfterWithdraw = mockERC20.balanceOf(address(this));
 
         assertEq(mockERC20.balanceOf(address(disburser)), 0);
         assertEq((_adminBalanceAfterWithdraw - _adminBalanceBeforeWithdraw), _toTransfer);
@@ -320,11 +320,11 @@ contract Pay is Fork {
         // Give RANDOM_USER 10,000,000 DAI
         deal(DAI_ADDRESS, RANDOM_USER, (10_000_000 * (10 ** DAI_DECIMALS)));
 
-        // Give RANDOM_USER 10,000 WBTC 
-        deal(WBTC_ADDRESS, RANDOM_USER,(10_000 * (10 ** WBTC_DECIMALS)));
+        // Give RANDOM_USER 10,000 WBTC
+        deal(WBTC_ADDRESS, RANDOM_USER, (10_000 * (10 ** WBTC_DECIMALS)));
 
-        // Give RANDOM_USER 10,000,000 USDC 
-        deal(USDC_ADDRESS, RANDOM_USER,(10_000_000 * (10 ** USDC_DECIMALS)));
+        // Give RANDOM_USER 10,000,000 USDC
+        deal(USDC_ADDRESS, RANDOM_USER, (10_000_000 * (10 ** USDC_DECIMALS)));
 
         // Give RANDOM_USER 20,000 WETH
         vm.deal(RANDOM_USER, 20_000 ether);
@@ -398,7 +398,9 @@ contract Pay is Fork {
         uint24 _invalidUniFee = 333;
 
         vm.expectRevert(Errors.InvalidUniFee.selector);
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, block.timestamp, _invalidUniFee, bytes32(0));
+        disburser.pay(
+            RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, block.timestamp, _invalidUniFee, bytes32(0)
+        );
 
         vm.stopPrank();
     }
@@ -443,7 +445,9 @@ contract Pay is Fork {
         uint256 userUSDCBalance = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, block.timestamp, 100, bytes32(0));
+        disburser.pay(
+            RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, block.timestamp, 100, bytes32(0)
+        );
 
         vm.stopPrank();
     }
@@ -622,7 +626,7 @@ contract Pay is Fork {
         bytes32 _data = bytes32(uint256(67));
         uint256 _amountIn = 100_000_000;
 
-        DataTypes.Preferences memory _recipientPreferences  = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
+        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
         assertEq(_recipientPreferences.tokenAddress, address(0));
         assertEq(_recipientPreferences.slippageAllowed, uint96(0));
 
@@ -801,7 +805,9 @@ contract Pay is Fork {
         emit Events.Payment(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, bytes32(uint256(0)));
 
         // Correct fee for this pool is 0.3%, which is 3000...
-        disburser.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, block.timestamp, 3000, bytes32(uint256(0)));
+        disburser.pay(
+            RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, block.timestamp, 3000, bytes32(uint256(0))
+        );
 
         vm.stopPrank();
 

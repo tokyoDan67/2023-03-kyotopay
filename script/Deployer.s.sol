@@ -14,21 +14,20 @@ import "forge-std/Script.sol";
 //     address wethAddress;
 //     address usdcAddress;
 //     address usdtAddress;
-//     address multisigAddress; 
+//     address multisigAddress;
 //     KyotoPay public kyotoPay;
 
-
 //     function _setUp() internal {
-//         if (block.chainid == ETH_CHAIN_ID) { 
+//         if (block.chainid == ETH_CHAIN_ID) {
 //             uniswapRouterAddress = UNISWAP_ROUTER_ADDRESS_MAINNET;
 //             wethAddress = WETH_ADDRESS_MAINNET;
 //             usdcAddress = USDC_ADDRESS_MAINNET;
 //             usdtAddress = USDT_ADDRESS_MAINNET;
 //             multisigAddress = MAINNET_MULTISIG;
 //         }
-//         else if (block.chainid == GOERLI_CHAIN_ID) { 
+//         else if (block.chainid == GOERLI_CHAIN_ID) {
 //             uniswapRouterAddress = UNISWAP_ROUTER_ADDRESS_GOERLI;
-//             wethAddress = WETH_ADDRESS_GOERLI; 
+//             wethAddress = WETH_ADDRESS_GOERLI;
 //             usdcAddress = USDC_ADDRESS_GOERLI;
 //             usdtAddress = USDT_ADDRESS_GOERLI;
 //             // No multisig on Goerli...
@@ -43,7 +42,7 @@ import "forge-std/Script.sol";
 //         _setUp();
 //         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 //         vm.startBroadcast(deployerPrivateKey);
-    
+
 //         kyotoPay = new KyotoPay(100, uniswapRouterAddress, wethAddress);
 
 //         /**
@@ -59,7 +58,7 @@ import "forge-std/Script.sol";
 //         kyotoPay.addToOutputWhitelist(usdcAddress);
 //         kyotoPay.addToOutputWhitelist(usdtAddress);
 //         kyotoPay.addToOutputWhitelist(wethAddress);
-        
+
 //         kyotoPay.transferOwnership(multisigAddress);
 
 //         vm.stopBroadcast();

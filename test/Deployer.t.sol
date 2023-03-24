@@ -21,7 +21,7 @@ pragma solidity =0.8.17;
 
 //         assertEq(_kyotoPay.uniswapSwapRouterAddress(), UNISWAP_ROUTER_ADDRESS_MAINNET);
 //         assertEq(_kyotoPay.wethAddress(), WETH_ADDRESS_MAINNET);
-        
+
 //         assertTrue(_kyotoPay.whitelistedInputTokens(USDC_ADDRESS_MAINNET));
 //         assertTrue(_kyotoPay.whitelistedInputTokens(USDT_ADDRESS_MAINNET));
 //         assertTrue(_kyotoPay.whitelistedInputTokens(WETH_ADDRESS_MAINNET));
@@ -42,7 +42,7 @@ pragma solidity =0.8.17;
 
 //         assertEq(_kyotoPay.uniswapSwapRouterAddress(), UNISWAP_ROUTER_ADDRESS_GOERLI);
 //         assertEq(_kyotoPay.wethAddress(), WETH_ADDRESS_GOERLI);
-        
+
 //         assertTrue(_kyotoPay.whitelistedInputTokens(USDC_ADDRESS_GOERLI));
 //         assertTrue(_kyotoPay.whitelistedInputTokens(USDT_ADDRESS_GOERLI));
 //         assertTrue(_kyotoPay.whitelistedInputTokens(WETH_ADDRESS_GOERLI));

@@ -2,7 +2,7 @@
 pragma solidity =0.8.17;
 
 /// @title Kyoto Hub
-/// Protocol Version 1.1 
+/// Protocol Version 1.1
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
@@ -25,7 +25,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     constructor() Ownable2Step() {}
 
     /**
-     * @notice sets the sender's receiving preferences. 
+     * @notice sets the sender's receiving preferences.
      * @param _preferences the sender's given preferences
      * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage
      * Requirements:
@@ -56,7 +56,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function addToInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
-        
+
         whitelistedInputTokens.add(_token);
         emit Events.AddedWhitelistedInputToken(_token);
     }
@@ -109,7 +109,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      * @param _token the token's address
      * @return true if '_token' is a whitelisted input token, false otherwise
      */
-    function isWhitelistedInputToken(address _token) external view returns(bool){
+    function isWhitelistedInputToken(address _token) external view returns (bool) {
         return whitelistedInputTokens.contains(_token);
     }
 
@@ -118,7 +118,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      * @param _token the token's address
      * @return true if '_token' is a whitelisted output token, false otherwise
      */
-    function isWhitelistedOutputToken(address _token) external view returns(bool) {
+    function isWhitelistedOutputToken(address _token) external view returns (bool) {
         return whitelistedOutputTokens.contains(_token);
     }
 

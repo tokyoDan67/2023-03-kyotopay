@@ -2,7 +2,7 @@
 pragma solidity =0.8.17;
 
 /// @title KyotoPay
-/// Version 1.1 
+/// Version 1.1
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -15,9 +15,9 @@ import {HubOwnable} from "./base/HubOwnable.sol";
 import {IDisburser} from "./interfaces/IDisburser.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
-// To Do: 
+// To Do:
 //   - Add a receive function
-//   - Add EIP712 signatures 
+//   - Add EIP712 signatures
 //   - Update the deadline to be passed in by the frontend
 
 contract Disburser is HubOwnable, Pausable, IDisburser {
@@ -33,7 +33,10 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
 
     // adminFee is denominated in PRECISION_FACTOR.  For example, a value for fee of 200 = 2%
     uint256 private adminFee;
-    constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress) HubOwnable(_kyotoHub) {
+
+    constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress)
+        HubOwnable(_kyotoHub)
+    {
         if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert Errors.ZeroAddress();
         if (_wethAddress == address(0)) revert Errors.ZeroAddress();
@@ -44,28 +47,29 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         WETH_ADDRESS = _wethAddress;
     }
 
-    function receivePayment(address _payer, address _tokenIn, uint256 _amountIn, uint24 _uniFee) external whenNotPaused {
-
-    }
+    function receivePayment(address _payer, address _tokenIn, uint256 _amountIn, uint256 _amountOut, uint24 _uniFee)
+        external
+        whenNotPaused
+    {}
 
     /**
      * @notice pays a recipient in their preferred token from a given input token
      * @param _recipient the recipient to pay
      * @param _tokenIn the token to send
-     * @param _amountIn the amount of tokens to send 
+     * @param _amountIn the amount of tokens to send
      * @param _amountOut estimate of the Uniswap output of recipient's preferred token. Calculated on the frontend
      * @param _uniFee a Uniswap fee for a given pool
      * @param _data data about the transaction to be indexed
-     * Requirements: 
+     * Requirements:
      *  - '_recipient' != address(0)
      *  - '_tokenIn' is a valid input token
-     *  - '_amountIn' != 0 
+     *  - '_amountIn' != 0
      *  - 'amountOut' != 0
      *  - '_uniFee' is a valid Uniswap pool fee
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      *  - The user's token balance > '_amountIn'
      *  - The user has approve the contract to transfer their tokens
-     */ 
+     */
     function pay(
         address _recipient,
         address _tokenIn,
@@ -90,7 +94,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * @param _uniFee a Uniswap fee for a given pool
      * @param _data data about the transaction to be indexed
      * Note: if the user has not set their preferences, they will receive WETH and not ETH
-     * Requirements: 
+     * Requirements:
      *  - '_recipient' != address(0)
      *  -  WETH is a whitelisted input
      *  -  msg.value > 0
@@ -99,7 +103,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data) external payable whenNotPaused {
+    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data)
+        external
+        payable
+        whenNotPaused
+    {
         // Cache vars
         uint256 _msgValue = msg.value;
         address _wethAddress = WETH_ADDRESS;
@@ -115,11 +123,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     //      Internal Functions      //
     //////////////////////////////////
 
-     /**
-      * @dev validates preferences, gets recipient funds, executes the UNI swap, sends funds to recipient
-      * Does not execute a UNI swap if the input token is the same as the output token or if the recipient has not set preferences
-      * Instead, _pay will send the user funds directly to the recipient after a fee
-      */
+    /**
+     * @dev validates preferences, gets recipient funds, executes the UNI swap, sends funds to recipient
+     * Does not execute a UNI swap if the input token is the same as the output token or if the recipient has not set preferences
+     * Instead, _pay will send the user funds directly to the recipient after a fee
+     */
     function _pay(
         address _recipient,
         address _tokenIn,
@@ -167,7 +175,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     ) internal returns (uint256) {
         // Cache
         address _uniswapSwapRouterAddress = UNISWAP_SWAP_ROUTER_ADDRESS;
-        
+
         IERC20(_tokenIn).safeApprove(_uniswapSwapRouterAddress, _amountIn);
 
         // create the input params
@@ -190,6 +198,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * Note: Uniswap fees for pools are 0.01%, 0.05%, 0.30%, and 1.00%
      * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
      */
+
     function _validateInputParams(
         address _recipient,
         address _tokenIn,
@@ -198,7 +207,9 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         uint256 _deadline,
         uint24 _uniFee
     ) internal view {
-        if((_uniFee != 100) && (_uniFee != 500) && (_uniFee != 3000) && (_uniFee != 10_000)) revert Errors.InvalidUniFee();
+        if ((_uniFee != 100) && (_uniFee != 500) && (_uniFee != 3000) && (_uniFee != 10_000)) {
+            revert Errors.InvalidUniFee();
+        }
         if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert Errors.InvalidToken();
         if (_recipient == address(0)) revert Errors.ZeroAddress();
         if (_amountIn == 0 || _amountOut == 0) revert Errors.InvalidAmount();
@@ -214,7 +225,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
 
     /**
      * @dev safeTransfer tokens to a given recipient given a ERC20 token address and amount to send
-     */ 
+     */
     function _sendRecipientFunds(address _tokenAddress, address _recipient, uint256 _amount) internal {
         // calculate the owner payment, this amount will stay in the contract and can be withdrawn at will (no reason to make superfluous transfers)
         uint256 ownerPayment = (_amount * adminFee) / PRECISION_FACTOR;
@@ -234,7 +245,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     /**
      * @dev cuts down on bytecode
      */
-     // (_recipient, _tokenIn, _amountIn, _data);
+    // (_recipient, _tokenIn, _amountIn, _data);
     function _emitPaymentEvent(address _recipient, address _tokenIn, uint256 _amountIn, bytes32 _data) internal {
         emit Events.Payment(_recipient, _tokenIn, _amountIn, _data);
     }
@@ -243,7 +254,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     //      View Functions      //
     //////////////////////////////
 
-    function getAdminFee() external view returns(uint256) {
+    function getAdminFee() external view returns (uint256) {
         return adminFee;
     }
 
