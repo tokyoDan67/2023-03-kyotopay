@@ -32,9 +32,9 @@ library Errors {
      */
     error InvalidRecipientToken();
 
-    /////////////////
-    ///   Payer   ///
-    /////////////////
+    //////////////////////
+    ///   Disburser   ///
+    /////////////////////
 
     /**
      *  Invalid value(s) for arguments 'amountIn' or '_amountOut'.  '_amountIn' is zero or '_amountOut' is zero
@@ -47,10 +47,18 @@ library Errors {
     error InvalidAdminFee();
 
     /**
+     * Argument '_deadline' is set before block.timestamp
+     */
+    error InvalidDeadline();
+
+    /**
      *  Argument '_tokenIn' is not a valid input token
      */
     error InvalidToken();
-
+    
+    /**
+     * Argument '_uniFee' is not a valid Uniswap fee (i.e. not equal to 0.01%, 0.05%, 0.3%, or 1%)
+     */
     error InvalidUniFee();
 
     /**

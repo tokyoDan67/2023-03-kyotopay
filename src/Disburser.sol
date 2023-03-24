@@ -23,7 +23,7 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
 
-    // MAX_ADMIN_FEE is denominated in DECIMALs.  I.e. 500 = 5%
+    // MAX_ADMIN_FEE is denominated in PRECISION_FACTOR.  I.e. 500 = 5%
     uint256 public constant MAX_ADMIN_FEE = 500;
 
     // Decimals is the same as KyotoHubs, 10_000
@@ -71,15 +71,16 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         address _tokenIn,
         uint256 _amountIn,
         uint256 _amountOut,
+        uint256 _deadline,
         uint24 _uniFee,
         bytes32 _data
     ) external whenNotPaused {
-        _validateInputParams(_recipient, _tokenIn, _amountIn, _amountOut, _uniFee);
+        _validateInputParams(_recipient, _tokenIn, _amountIn, _amountOut, _deadline, _uniFee);
 
         // transfer the amount to this contract (should fail if the contract will not allow it)
         _getSenderFunds(_tokenIn, _amountIn);
 
-        _pay(_recipient, _tokenIn, _amountIn, _amountOut, _uniFee, _data);
+        _pay(_recipient, _tokenIn, _amountIn, _amountOut, _deadline, _uniFee, _data);
     }
 
     /**
@@ -98,16 +99,16 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(address _recipient, uint256 _amountOut, uint24 _uniFee, bytes32 _data) external payable whenNotPaused {
+    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data) external payable whenNotPaused {
         // Cache vars
         uint256 _msgValue = msg.value;
         address _wethAddress = WETH_ADDRESS;
 
-        _validateInputParams(_recipient, _wethAddress, _msgValue, _amountOut, _uniFee);
+        _validateInputParams(_recipient, _wethAddress, _msgValue, _amountOut, _deadline, _uniFee);
 
         IWETH9(_wethAddress).deposit{value: _msgValue}();
 
-        _pay(_recipient, _wethAddress, _msgValue, _amountOut, _uniFee, _data);
+        _pay(_recipient, _wethAddress, _msgValue, _amountOut, _deadline, _uniFee, _data);
     }
 
     //////////////////////////////////
@@ -124,6 +125,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         address _tokenIn,
         uint256 _amountIn,
         uint256 _amountOut,
+        uint256 _deadline,
         uint24 _uniFee,
         bytes32 _data
     ) internal {
@@ -140,7 +142,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         }
 
         uint256 swapOutput = _executeSwap(
-            _tokenIn, _preferences.tokenAddress, _amountIn, _amountOut, _uniFee, _preferences.slippageAllowed
+            _tokenIn, _preferences.tokenAddress, _amountIn, _amountOut, _deadline, _uniFee, _preferences.slippageAllowed
         );
 
         // transfer funds to recipient (will pay the owners here too)
@@ -159,6 +161,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         address _tokenOut,
         uint256 _amountIn,
         uint256 _amountOut,
+        uint256 _deadline,
         uint24 _uniFee,
         uint96 _slippageAllowed
     ) internal returns (uint256) {
@@ -173,7 +176,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
             tokenOut: _tokenOut,
             fee: _uniFee, // e.g. fee for a pool at 0.3% tier is 3000
             recipient: address(this), // this contract will be doing the distribution of funds
-            deadline: block.timestamp,
+            deadline: _deadline,
             amountIn: _amountIn,
             amountOutMinimum: ((_amountOut * uint256(_slippageAllowed)) / PRECISION_FACTOR),
             sqrtPriceLimitX96: 0 // sets a limit for the price that the swap will push to the pool (setting to 0 makes it inactive) --> will require more research
@@ -187,19 +190,19 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * Note: Uniswap fees for pools are 0.01%, 0.05%, 0.30%, and 1.00%
      * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
      */
-
     function _validateInputParams(
         address _recipient,
         address _tokenIn,
         uint256 _amountIn,
         uint256 _amountOut,
+        uint256 _deadline,
         uint24 _uniFee
     ) internal view {
-        // To Do: Make into custom error. Need to review logic operations...
         if((_uniFee != 100) && (_uniFee != 500) && (_uniFee != 3000) && (_uniFee != 10_000)) revert Errors.InvalidUniFee();
         if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert Errors.InvalidToken();
         if (_recipient == address(0)) revert Errors.ZeroAddress();
         if (_amountIn == 0 || _amountOut == 0) revert Errors.InvalidAmount();
+        if (_deadline < block.timestamp) revert Errors.InvalidDeadline();
     }
 
     /**

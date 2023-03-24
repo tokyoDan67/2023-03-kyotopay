@@ -387,7 +387,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        disburser.pay(address(0), USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(address(0), USDC_ADDRESS, 100_000_000, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -398,7 +398,7 @@ contract Pay is Fork {
         uint24 _invalidUniFee = 333;
 
         vm.expectRevert(Errors.InvalidUniFee.selector);
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, _invalidUniFee, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, block.timestamp, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
     }
@@ -407,14 +407,14 @@ contract Pay is Fork {
         disburser.pause();
 
         vm.expectRevert("Pausable: paused");
-        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, block.timestamp, 100, bytes32(0));
     }
 
     function testFork_Pay_RevertIf_InvalidInputToken() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidToken.selector);
-        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, LOOKS_ADDRESS, 100_000_000, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -423,7 +423,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 0, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 0, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -432,7 +432,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 0, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 0, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -443,7 +443,7 @@ contract Pay is Fork {
         uint256 userUSDCBalance = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, (userUSDCBalance + 1), 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -454,7 +454,7 @@ contract Pay is Fork {
         USDC_CONTRACT.safeApprove(address(disburser), 100);
 
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, 100, bytes32(0));
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, 100_000_000, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -499,7 +499,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Too little received");
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, block.timestamp, 100, _data);
 
         vm.stopPrank();
     }
@@ -546,7 +546,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Too little received");
-        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, block.timestamp, 100, _data);
 
         vm.stopPrank();
     }
@@ -555,14 +555,14 @@ contract Pay is Fork {
         disburser.pause();
 
         vm.expectRevert("Pausable: paused");
-        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, bytes32(0));
     }
 
     function testFork_PayETH_RevertIf_RecipientAddressZero() public {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        disburser.payEth{value: 1 ether}(address(0), 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(address(0), 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -573,7 +573,7 @@ contract Pay is Fork {
         uint24 _invalidUniFee = 333;
 
         vm.expectRevert(Errors.InvalidUniFee.selector);
-        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, _invalidUniFee, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, _invalidUniFee, bytes32(0));
 
         vm.stopPrank();
     }
@@ -584,7 +584,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidToken.selector);
-        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -593,7 +593,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        disburser.payEth{value: 0}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: 0}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -602,7 +602,7 @@ contract Pay is Fork {
         vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
-        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 0, 100, bytes32(0));
+        disburser.payEth{value: 1 ether}(RANDOM_RECIPIENT, 0, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -613,7 +613,7 @@ contract Pay is Fork {
         uint256 userETHBalance = RANDOM_USER.balance;
 
         vm.expectRevert();
-        disburser.payEth{value: (userETHBalance + 1)}(RANDOM_RECIPIENT, 99_000_000, 100, bytes32(0));
+        disburser.payEth{value: (userETHBalance + 1)}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, bytes32(0));
 
         vm.stopPrank();
     }
@@ -634,7 +634,7 @@ contract Pay is Fork {
         vm.expectEmit(true, true, true, true);
         emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, block.timestamp, 100, _data);
 
         vm.stopPrank();
 
@@ -677,7 +677,7 @@ contract Pay is Fork {
         vm.expectEmit(true, true, true, true);
         emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
 
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, 100, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, 99_000_000, block.timestamp, 100, _data);
 
         vm.stopPrank();
 
@@ -699,9 +699,6 @@ contract Pay is Fork {
     }
 
     function testFork_Pay_PreferenceInputUsdcAndOutputWeth() public {
-        // Random data
-        bytes32 _data = bytes32(uint256(67));
-
         // Amount in is $10,000 of USDC...
         uint256 _amountIn = 10_000 * (10 ** USDC_DECIMALS);
 
@@ -739,23 +736,18 @@ contract Pay is Fork {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, _data);
-
         // Correct fee for this pool is 0.05%, which is 500...
-        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, 500, _data);
+        disburser.pay(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, expectedWeth, block.timestamp, 500, bytes32(0));
 
         vm.stopPrank();
 
         (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
-        uint256 userUSDCBalanceAfter = USDC_CONTRACT.balanceOf(RANDOM_USER);
-
         uint256 adminFee = (expectedWeth * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = expectedWeth - adminFee;
 
-        assertEq((userUSDCBalanceBefore - userUSDCBalanceAfter), _amountIn);
+        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), _amountIn);
 
         // Approximately equal within 0.25%.
         assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.0025e18);
@@ -809,7 +801,7 @@ contract Pay is Fork {
         emit Events.Payment(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, bytes32(uint256(0)));
 
         // Correct fee for this pool is 0.3%, which is 3000...
-        disburser.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, 3000, bytes32(uint256(0)));
+        disburser.pay(RANDOM_RECIPIENT, WBTC_ADDRESS, _amountIn, expectedUSDC, block.timestamp, 3000, bytes32(uint256(0)));
 
         vm.stopPrank();
 
@@ -846,7 +838,7 @@ contract Pay is Fork {
         emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
-        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, _data);
 
         vm.stopPrank();
 
@@ -892,7 +884,7 @@ contract Pay is Fork {
         emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Amount out doesn't matter here...
-        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, 100, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, 99_000_000, block.timestamp, 100, _data);
 
         vm.stopPrank();
 
@@ -959,7 +951,7 @@ contract Pay is Fork {
         emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, _data);
 
         // Correct fee for this pool is 0.05%, which is 500...
-        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, 500, _data);
+        disburser.payEth{value: _amountIn}(RANDOM_RECIPIENT, expectedUSDC, block.timestamp, 500, _data);
 
         vm.stopPrank();
 
