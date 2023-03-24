@@ -90,7 +90,7 @@ contract Setters is Test, Helper {
 
     // TO DO: Change decimals to a constants library
     function test_SetPreferences_RevertIf_SlippagePreferenceEqualToDecimals() public {
-        uint256 decimals256 = kyotoHub.DECIMALS();
+        uint256 decimals256 = kyotoHub.PRECISION_FACTOR();
         uint96 invalidSlippage = uint96(decimals256);
 
         DataTypes.Preferences memory _invalidSlippage =
@@ -105,7 +105,7 @@ contract Setters is Test, Helper {
     }
 
     function test_SetPreferences_RevertIf_SlippagePreferenceGreaterThanDecimals() public {
-        uint256 decimals256 = kyotoHub.DECIMALS();
+        uint256 decimals256 = kyotoHub.PRECISION_FACTOR();
         uint96 invalidSlippage = uint96(decimals256 + 1);
 
         DataTypes.Preferences memory _invalidSlippage =
@@ -189,6 +189,50 @@ contract Admin is Test, Helper {
         kyotoHub.addToOutputWhitelist(mockERC20);
 
         assertTrue(kyotoHub.isWhitelistedOutputToken(mockERC20));
+    }
+
+    function test_AddToInputWhitelist_MultipleTokens() public {
+        kyotoHub.addToInputWhitelist(USDC_ADDRESS);
+        kyotoHub.addToInputWhitelist(DAI_ADDRESS);
+        kyotoHub.addToInputWhitelist(WETH_ADDRESS);
+
+        address[] memory inputAssets = kyotoHub.getWhitelistedInputTokens();
+
+        // Ordering is not guaranteed in enumerable set
+        bool containsInvalidAsset = false;
+        for (uint256 i; i < inputAssets.length; ++i) {
+            if (inputAssets[i] != USDC_ADDRESS && inputAssets[i] != DAI_ADDRESS && inputAssets[i] != WETH_ADDRESS) {
+                 containsInvalidAsset = true;
+            }
+        }
+        assertFalse(containsInvalidAsset);
+    }
+
+    function test_AddToOutputWhitelist_MultipleTokens() public {
+        kyotoHub.addToOutputWhitelist(USDC_ADDRESS);
+        kyotoHub.addToOutputWhitelist(DAI_ADDRESS);
+        kyotoHub.addToOutputWhitelist(WETH_ADDRESS);
+
+        address[] memory outputAssets = kyotoHub.getWhitelistedOutputTokens();
+
+        // Ordering is not guaranteed in enumerable set
+        bool containsInvalidAsset = false;
+        for (uint256 i; i < outputAssets.length; ++i) {
+            if (outputAssets[i] != USDC_ADDRESS && outputAssets[i] != DAI_ADDRESS && outputAssets[i] != WETH_ADDRESS) {
+                 containsInvalidAsset = true;
+            }
+        }
+        assertFalse(containsInvalidAsset);
+    }
+
+    function test_InputWhiteList_NoTokens() public {
+        address[] memory inputAssets = kyotoHub.getWhitelistedInputTokens(); 
+        assertEq(inputAssets.length, 0);
+    }
+
+    function test_OutputWhitelist_NoTokens() public {
+        address[] memory outputAssets = kyotoHub.getWhitelistedOutputTokens();
+        assertEq(outputAssets.length, 0);
     }
 
     function test_AddToInputWhiteList_RevertIf_NotOwner() public {

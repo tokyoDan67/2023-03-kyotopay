@@ -27,21 +27,25 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     uint256 public constant MAX_ADMIN_FEE = 500;
 
     // Decimals is the same as KyotoHubs, 10_000
-    uint256 public immutable DECIMALS;
+    uint256 public immutable PRECISION_FACTOR;
     address public immutable UNISWAP_SWAP_ROUTER_ADDRESS;
     address public immutable WETH_ADDRESS;
 
-    // adminFee is denominated in DECIMALS.  For example, a value for fee of 200 = 2%
+    // adminFee is denominated in PRECISION_FACTOR.  For example, a value for fee of 200 = 2%
     uint256 private adminFee;
     constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress) HubOwnable(_kyotoHub) {
         if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert Errors.ZeroAddress();
         if (_wethAddress == address(0)) revert Errors.ZeroAddress();
 
-        DECIMALS = KYOTO_HUB.DECIMALS();
+        PRECISION_FACTOR = KYOTO_HUB.PRECISION_FACTOR();
         adminFee = _adminFee;
         UNISWAP_SWAP_ROUTER_ADDRESS = _uniswapSwapRouterAddress;
         WETH_ADDRESS = _wethAddress;
+    }
+
+    function receivePayment(address _payer, address _tokenIn, uint256 _amountIn, uint24 _uniFee) external whenNotPaused {
+
     }
 
     /**
@@ -171,7 +175,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
             recipient: address(this), // this contract will be doing the distribution of funds
             deadline: block.timestamp,
             amountIn: _amountIn,
-            amountOutMinimum: ((_amountOut * uint256(_slippageAllowed)) / DECIMALS),
+            amountOutMinimum: ((_amountOut * uint256(_slippageAllowed)) / PRECISION_FACTOR),
             sqrtPriceLimitX96: 0 // sets a limit for the price that the swap will push to the pool (setting to 0 makes it inactive) --> will require more research
         });
 
@@ -210,7 +214,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      */ 
     function _sendRecipientFunds(address _tokenAddress, address _recipient, uint256 _amount) internal {
         // calculate the owner payment, this amount will stay in the contract and can be withdrawn at will (no reason to make superfluous transfers)
-        uint256 ownerPayment = (_amount * adminFee) / DECIMALS;
+        uint256 ownerPayment = (_amount * adminFee) / PRECISION_FACTOR;
 
         // pay the recipient the excess
         IERC20(_tokenAddress).safeTransfer(_recipient, _amount - ownerPayment);

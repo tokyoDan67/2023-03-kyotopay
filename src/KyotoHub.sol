@@ -4,6 +4,7 @@ pragma solidity =0.8.17;
 /// @title Kyoto Hub
 /// Protocol Version 1.1 
 
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Errors} from "./libraries/Errors.sol";
@@ -11,16 +12,15 @@ import {Events} from "./libraries/Events.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
-// To Do: 
-// - Convert whitelisted tokens to enumerable set
 contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
-    uint256 public constant DECIMALS = 10_000;
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    uint256 public constant PRECISION_FACTOR = 10_000;
 
     // mapping for prferences
-    // Change to private and create custom getters...
     mapping(address => DataTypes.Preferences) private recipientPreferences;
-    mapping(address => bool) private whitelistedInputTokens;
-    mapping(address => bool) private whitelistedOutputTokens;
+    EnumerableSet.AddressSet private whitelistedInputTokens;
+    EnumerableSet.AddressSet private whitelistedOutputTokens;
 
     constructor() Ownable2Step() {}
 
@@ -33,15 +33,19 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      *  - '_preferences.tokenAddress' is a valid output token found in whitelistedOutputTokens
      */
     function setPreferences(DataTypes.Preferences calldata _preferences) external whenNotPaused {
-        if ((_preferences.slippageAllowed == 0) || (_preferences.slippageAllowed >= DECIMALS)) {
+        if ((_preferences.slippageAllowed == 0) || (_preferences.slippageAllowed >= PRECISION_FACTOR)) {
             revert Errors.InvalidRecipientSlippage();
         }
-        if (!(whitelistedOutputTokens[_preferences.tokenAddress])) revert Errors.InvalidRecipientToken();
+        if (!(whitelistedOutputTokens.contains(_preferences.tokenAddress))) revert Errors.InvalidRecipientToken();
 
         recipientPreferences[msg.sender] = _preferences;
 
         emit Events.PreferencesSet(msg.sender, _preferences.tokenAddress, _preferences.slippageAllowed);
     }
+
+    //////////////////////////////
+    ///     Admin Functions    ///
+    //////////////////////////////
 
     /**
      * @dev Admin function to add a token to the input whitelist
@@ -52,7 +56,8 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function addToInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
-        whitelistedInputTokens[_token] = true;
+        
+        whitelistedInputTokens.add(_token);
         emit Events.AddedWhitelistedInputToken(_token);
     }
 
@@ -65,10 +70,9 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function addToOutputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
-        whitelistedOutputTokens[_token] = true;
+        whitelistedOutputTokens.add(_token);
         emit Events.AddedWhitelistedOutputToken(_token);
     }
-
 
     /**
      * @dev Admin function to revoke a token from the input whitelist
@@ -79,7 +83,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function revokeFromInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
-        delete whitelistedInputTokens[_token];
+        whitelistedInputTokens.remove(_token);
         emit Events.RevokedWhitelistedInputToken(_token);
     }
 
@@ -92,19 +96,53 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function revokeFromOutputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
-        delete whitelistedOutputTokens[_token];
+        whitelistedOutputTokens.remove(_token);
         emit Events.RevokedWhitelistedOutputToken(_token);
     }
 
+    /////////////////////////////
+    ///     View Functions    ///
+    /////////////////////////////
+
+    /**
+     * @notice returns whether or not a token is a whitelisted input token
+     * @param _token the token's address
+     * @return true if '_token' is a whitelisted input token, false otherwise
+     */
     function isWhitelistedInputToken(address _token) external view returns(bool){
-        return whitelistedInputTokens[_token];
+        return whitelistedInputTokens.contains(_token);
     }
 
+    /**
+     * @notice returns whether or not a token is a whitelisted output token
+     * @param _token the token's address
+     * @return true if '_token' is a whitelisted output token, false otherwise
+     */
     function isWhitelistedOutputToken(address _token) external view returns(bool) {
-        return whitelistedOutputTokens[_token];
+        return whitelistedOutputTokens.contains(_token);
     }
 
+    /**
+     * @notice returns all whitelisted input tokens
+     * @return an address array containing all whitelisted input tokens
+     */
+    function getWhitelistedInputTokens() external view returns (address[] memory) {
+        return whitelistedInputTokens.values();
+    }
 
+    /**
+     * @notice returns all whitelisted output tokens
+     * @return an address array containing all whitelisted output tokens
+     */
+    function getWhitelistedOutputTokens() external view returns (address[] memory) {
+        return whitelistedOutputTokens.values();
+    }
+
+    /**
+     * @notice returns a recipient's preferences
+     * @param _recipient the recipient
+     * @return A struct containing the _recipient's preferred token and allowed slippage
+     */
     function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory) {
         return recipientPreferences[_recipient];
     }

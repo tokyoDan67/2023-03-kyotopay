@@ -210,7 +210,7 @@ contract InternalFunctions is Test, Helper {
 
     function test_SendRecipientFunds() public {
         uint256 _fee = disburserHarness.getAdminFee();
-        uint256 _decimals = disburserHarness.DECIMALS();
+        uint256 _decimals = disburserHarness.PRECISION_FACTOR();
         uint256 _toSend = 1_000 ether;
 
         uint256 feePayment = (_fee * _toSend) / _decimals;
@@ -380,7 +380,7 @@ contract Pay is Fork {
          * Verify constants in Helper
          */
         assertEq(FEE, disburser.getAdminFee());
-        assertEq(KYOTOPAY_DECIMALS, disburser.DECIMALS());
+        assertEq(KYOTOPAY_DECIMALS, disburser.PRECISION_FACTOR());
     }
 
     function testFork_Pay_RevertIf_RecipientAddressZero() public {
