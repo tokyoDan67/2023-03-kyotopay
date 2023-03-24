@@ -54,12 +54,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
 
     /**
      * @notice pays a recipient in their preferred token from a given input token
-     * @param _recipient the recipient to pay
-     * @param _tokenIn the token to send
-     * @param _amountIn the amount of tokens to send
-     * @param _amountOut estimate of the Uniswap output of recipient's preferred token. Calculated on the frontend
-     * @param _uniFee a Uniswap fee for a given pool
-     * @param _data data about the transaction to be indexed
+     * @param _params the parameters 
      * Requirements:
      *  - '_recipient' != address(0)
      *  - '_tokenIn' is a valid input token
@@ -70,29 +65,17 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The user's token balance > '_amountIn'
      *  - The user has approve the contract to transfer their tokens
      */
-    function pay(
-        address _recipient,
-        address _tokenIn,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        uint256 _deadline,
-        uint24 _uniFee,
-        bytes32 _data
-    ) external whenNotPaused {
-        _validateInputParams(_recipient, _tokenIn, _amountIn, _amountOut, _deadline, _uniFee);
+    function pay(DataTypes.PayParams memory _params) external whenNotPaused {
+        _validateInputParams(_params);
 
         // transfer the amount to this contract (should fail if the contract will not allow it)
-        _getSenderFunds(_tokenIn, _amountIn);
+        _getSenderFunds(_params.tokenIn, _params.amountIn);
 
-        _pay(_recipient, _tokenIn, _amountIn, _amountOut, _deadline, _uniFee, _data);
+        _pay(_params);
     }
 
     /**
      * @notice pays a recipient in their preferred token from the given ether
-     * @param _recipient the recipient to pay
-     * @param _amountOut estimate of the Uniswap output of recipient's preferred token. Calculated on the frontend
-     * @param _uniFee a Uniswap fee for a given pool
-     * @param _data data about the transaction to be indexed
      * Note: if the user has not set their preferences, they will receive WETH and not ETH
      * Requirements:
      *  - '_recipient' != address(0)
@@ -103,20 +86,22 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data)
+    function payEth(DataTypes.PayParams memory _params)
         external
         payable
         whenNotPaused
     {
         // Cache vars
-        uint256 _msgValue = msg.value;
-        address _wethAddress = WETH_ADDRESS;
+        uint256 msgValue = msg.value;
+        address wethAddress = WETH_ADDRESS;
 
-        _validateInputParams(_recipient, _wethAddress, _msgValue, _amountOut, _deadline, _uniFee);
+        _params.tokenIn = wethAddress;
 
-        IWETH9(_wethAddress).deposit{value: _msgValue}();
+        _validateInputParams(_params);
 
-        _pay(_recipient, _wethAddress, _msgValue, _amountOut, _deadline, _uniFee, _data);
+        IWETH9(wethAddress).deposit{value: _msgValue}();
+
+        _pay(_params);
     }
 
     //////////////////////////////////
@@ -128,36 +113,28 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * Does not execute a UNI swap if the input token is the same as the output token or if the recipient has not set preferences
      * Instead, _pay will send the user funds directly to the recipient after a fee
      */
-    function _pay(
-        address _recipient,
-        address _tokenIn,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        uint256 _deadline,
-        uint24 _uniFee,
-        bytes32 _data
-    ) internal {
+    function _pay(DataTypes.PayParams memory _params) internal {
         // Cache the recipient's preferences
         DataTypes.Preferences memory _preferences = KYOTO_HUB.getRecipientPreferences(_recipient);
         bool areValidPreferences = _validatePreferences(_preferences);
 
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
-        if ((_tokenIn == _preferences.tokenAddress) || !(areValidPreferences)) {
-            _sendRecipientFunds(_tokenIn, _recipient, _amountIn);
-            _emitPaymentEvent(_recipient, _tokenIn, _amountIn, _data);
+        if ((_params.tokenIn == _preferences.tokenAddress) || !(areValidPreferences)) {
+            _sendRecipientFunds(_params.tokenIn, _params.recipient, _params.amountIn);
+            _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
 
             return;
         }
 
         uint256 swapOutput = _executeSwap(
-            _tokenIn, _preferences.tokenAddress, _amountIn, _amountOut, _deadline, _uniFee, _preferences.slippageAllowed
+            _params.tokenIn, _params.preferences.tokenAddress, _params.amountIn, _params.amountOut, _params.deadline, _params.uniFee, _preferences.slippageAllowed
         );
 
         // transfer funds to recipient (will pay the owners here too)
-        _sendRecipientFunds(_preferences.tokenAddress, _recipient, swapOutput);
+        _sendRecipientFunds(_preferences.tokenAddress, _params.recipient, swapOutput);
 
         // emit any data for end user use
-        _emitPaymentEvent(_recipient, _tokenIn, _amountIn, _data);
+        _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
     }
 
     /**
@@ -179,7 +156,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         IERC20(_tokenIn).safeApprove(_uniswapSwapRouterAddress, _amountIn);
 
         // create the input params
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+        ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: _tokenIn,
             tokenOut: _tokenOut,
             fee: _uniFee, // e.g. fee for a pool at 0.3% tier is 3000
@@ -191,7 +168,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         });
 
         // swap currency on uniswap
-        return ISwapRouter(_uniswapSwapRouterAddress).exactInputSingle(params);
+        return ISwapRouter(_uniswapSwapRouterAddress).exactInputSingle(uniParams);
     }
     /**
      * @dev Internal function to validate input parameters. Reverts if given invalid input params.
@@ -199,21 +176,14 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
      */
 
-    function _validateInputParams(
-        address _recipient,
-        address _tokenIn,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        uint256 _deadline,
-        uint24 _uniFee
-    ) internal view {
-        if ((_uniFee != 100) && (_uniFee != 500) && (_uniFee != 3000) && (_uniFee != 10_000)) {
+    function _validateInputParams(DataTypes.PayParams memory _params) internal view {
+        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3000) && (_params.uniFee != 10_000)) {
             revert Errors.InvalidUniFee();
         }
-        if (!(KYOTO_HUB.isWhitelistedInputToken(_tokenIn))) revert Errors.InvalidToken();
-        if (_recipient == address(0)) revert Errors.ZeroAddress();
-        if (_amountIn == 0 || _amountOut == 0) revert Errors.InvalidAmount();
-        if (_deadline < block.timestamp) revert Errors.InvalidDeadline();
+        if (!(KYOTO_HUB.isWhitelistedInputToken(_params.tokenIn))) revert Errors.InvalidToken();
+        if (_params.recipient == address(0)) revert Errors.ZeroAddress();
+        if (_params.amountIn == 0 || _params.amountOut == 0) revert Errors.InvalidAmount();
+        if (_params.deadline < block.timestamp) revert Errors.InvalidDeadline();
     }
 
     /**
