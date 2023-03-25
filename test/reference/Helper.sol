@@ -8,6 +8,7 @@ contract Helper {
 
     uint256 constant FEE = 100;
     uint256 constant KYOTOPAY_DECIMALS = 10_000;
+    uint256 constant UNISWAP_FEE_PRECISION_FACTOR = 1_000_000;
     address constant UNISWAP_SWAPROUTER_ADDRESS = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     // Random addresses used for tests

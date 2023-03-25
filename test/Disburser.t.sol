@@ -909,7 +909,16 @@ contract Pay is Fork {
     }
 
     function testFork_Pay_PreferenceInputUsdcAndOutputWeth() public {
-        uint256 _amountIn = (10_000 * (10 ** USDC_DECIMALS));
+        // Amount in is $10,000 USDC
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: RANDOM_RECIPIENT,
+            tokenIn: USDC_ADDRESS,
+            uniFee: 500,
+            amountIn: (10_000 * (10 ** USDC_DECIMALS)),
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(uint256(67))
+        }); 
 
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
@@ -933,34 +942,27 @@ contract Pay is Fork {
         // Chainlink's pricefeed uses 8 decimals
         // However: We need the calculation to end up using the WETH decimals, i.e. 10^18
 
-        // _amountIn = USDC_Amount * 10^6
+        // amountIn = USDC_Amount * 10^6
         // ethUSDCPrice = ETH_Price * 10^8
         // expectedWeth = (USDC_Amount * 10^6) * (10^8) * (10^(18-6)) / (ETH_Price * 10^8)
         // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
 
         // Therefore: expectedWeth = (_amountIn) * (10^8) * (10^(18-6)) / ethUSDCPrice
 
-        uint256 expectedWeth =
-            (_amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
+        uint256 usdcToWethConversion =
+            (params.amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
 
-        uint256 adminFee = (expectedWeth * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = expectedWeth - adminFee;
+        // Adjust for Uniswap fee
+        params.amountOut = (usdcToWethConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountOut - adminFee;
 
         vm.startPrank(RANDOM_USER);
 
-        DataTypes.PayParams memory params = DataTypes.PayParams({
-            recipient: RANDOM_RECIPIENT,
-            tokenIn: USDC_ADDRESS,
-            uniFee: 500,
-            amountIn: _amountIn,
-            amountOut: expectedWeth,
-            deadline: block.timestamp,
-            data: bytes32(uint256(67))
-        }); 
-
         // Unable to accurately predict the amountOut
         vm.expectEmit(true, true, true, false);
-        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, expectedWeth, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, params.amountOut, params.data);
 
         disburser.pay(params);
 
@@ -969,16 +971,24 @@ contract Pay is Fork {
         (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
-        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), _amountIn);
+        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), params.amountIn);
 
-        // Approximately equal within 0.25%.
-        assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.0025e18);
-        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.0025e18);
+        // Approximately equal within 0.1%
+        assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.001e18);
+        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.001e18);
     }
 
     function testFork_Pay_PreferenceInputWbtcAndOutputUSDC() public {
         // Amount in is ~$28,000 of WBTC
-        uint256 _amountIn = 1 * (10 ** WBTC_DECIMALS); 
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: RANDOM_RECIPIENT,
+            tokenIn: WBTC_ADDRESS,
+            uniFee: 3_000,
+            amountIn: (1 * (10 ** WBTC_DECIMALS)),
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(uint256(67))
+        }); 
 
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_800});
@@ -1005,30 +1015,23 @@ contract Pay is Fork {
         // Chainlink's pricefeeds uses 8 decimals
         // However: We need the calculation to end up using the USDC decimals, i.e. 10^6
 
-        // _amountIn = WBTC_Amount * 10^8
+        // amountIn = WBTC_Amount * 10^8
         // btcUSDCPrice = BTC_Price * 10^8
         // wbtcBtcConversionRate = Conversion_Rate * 10^8
         // expectedUSDC = (WBTC_Amount * 10^8) * (Conversion_Rate * 10^8) * (btcUSDPrice * 10^8) * (10^(6-8)) / (10^8) * 10(^8)
         // Algebraically, 10^(6-8) in the numerator is the same as 10^(8-6) in the denominator
         // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
 
-        // Therefore: expectedUSDC = _amountIn * wbtcBtcConversionRate * btcUSDCPrice) / (10(8-6) * (10^8) * 10(^8))
+        // Therefore: wbtcToUsdcConversion = amountIn * wbtcBtcConversionRate * btcUSDCPrice) / (10(8-6) * (10^8) * 10(^8))
 
-        uint256 expectedUSDC = (_amountIn * uint256(wbtcBtcConversionRate) * uint256(btcUSDCPrice))
+        uint256 wbtcToUsdcConversion = (params.amountIn * uint256(wbtcBtcConversionRate) * uint256(btcUSDCPrice))
             / ((10 ** (WBTC_DECIMALS - USDC_DECIMALS)) * (10 ** btcUSDCDecimals) * (10 ** wbtcBtcConversionDecimals));
 
-        uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
-
-
-        DataTypes.PayParams memory params = DataTypes.PayParams({
-            recipient: RANDOM_RECIPIENT,
-            tokenIn: WBTC_ADDRESS,
-            uniFee: 3_000,
-            amountIn: _amountIn,
-            amountOut: expectedUSDC,
-            deadline: block.timestamp,
-            data: bytes32(uint256(67))
-        }); 
+        // Adjust for Uniswap fee
+        params.amountOut = (wbtcToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+ 
+        uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountOut - adminFee; 
 
         vm.startPrank(RANDOM_USER);
         
@@ -1039,12 +1042,12 @@ contract Pay is Fork {
         (uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter,) =
             getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
-        assertEq((userWbtcBalanceBefore - WBTC_CONTRACT.balanceOf(RANDOM_USER)), _amountIn, "Incorrect user balance");
+        assertEq((userWbtcBalanceBefore - WBTC_CONTRACT.balanceOf(RANDOM_USER)), params.amountIn, "Incorrect user balance");
 
-        // Approximately equal within 0.50%
+        // Approximately equal within 0.15%
         // recipientPayment = expectedUSDC - adminFee
-        assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), (expectedUSDC - adminFee), 0.005e18, "Incorrect recipient balance");
-        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.005e18, "Incorrect disburser balance");
+        assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.0015e18, "Incorrect recipient balance");
+        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.0015e18, "Incorrect disburser balance");
     }
 
     function testFork_PayEth_NoPreferencesSet() public {
@@ -1155,6 +1158,14 @@ contract Pay is Fork {
         // Amount in is ~$16,000 of ether...
         uint256 _amountIn = 10 ether;
 
+        DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
+            recipient: RANDOM_RECIPIENT,
+            uniFee: 500,
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(uint256(67))
+        }); 
+
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
@@ -1185,22 +1196,20 @@ contract Pay is Fork {
 
         // Therefore: expectedUSDC = (_amountIn * ethUSDCPrice) / ((10^8) * (10^(18-6)))
 
-        uint256 expectedUSDC =
+        uint256 wethToUsdcConversion =
             (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
 
-        DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
-            recipient: RANDOM_RECIPIENT,
-            uniFee: 500,
-            amountOut: expectedUSDC,
-            deadline: block.timestamp,
-            data: bytes32(uint256(67))
-        }); 
+        // Adjust for Uniswap fee
+        params.amountOut = params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountOut - adminFee;
 
         vm.startPrank(RANDOM_USER);
 
         // Unable to accurately predict the amountOut
         vm.expectEmit(true, true, true, false);
-        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, expectedUSDC, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, params.amountOut, params.data);
 
         disburser.payEth{value: _amountIn}(params);
 
@@ -1209,24 +1218,11 @@ contract Pay is Fork {
         (uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter,) =
             getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
-        uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = expectedUSDC - adminFee;
 
         assertEq((userEthBalanceBefore - RANDOM_USER.balance), _amountIn);
 
-        // Approximately equal within 0.25%.
-        assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.0025e18);
-        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.0025e18);
+        // Approximately equal within 0.1%.
+        assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.001e18);
+        assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.001e18);
     }
-}
-
-// Will get to after demo day....
-// Relatively unimportant, but good to have, especially regarding extreme values in Pay and PayEth
-
-contract FuzzNoFork is Helper, Test {}
-
-contract FuzzFork is Fork {
-// function testForkFuzz_Pay_SameInputAndOutput() public {}
-
-// function testForkFuzz_Pay_WbtcInputAndUsdcOutput() public {}
 }

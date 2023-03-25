@@ -181,7 +181,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      */
 
     function _validateInputParams(DataTypes.PayParams memory _params) internal view {
-        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3000) && (_params.uniFee != 10_000)) {
+        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3_000) && (_params.uniFee != 10_000)) {
             revert Errors.InvalidUniFee();
         }
         if (!(KYOTO_HUB.isWhitelistedInputToken(_params.tokenIn))) revert Errors.InvalidToken();
