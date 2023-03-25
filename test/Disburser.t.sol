@@ -598,8 +598,8 @@ contract Pay is Fork {
      *  Needed to up the payment amount to $48,000 to have a slippage >0.01%
      */
     function testFork_PayEth_RevertIf_InsufficcientAmountOut() public {
-        // Amount in is ~$48,000 of ether...
-        uint256 _amountIn = 30 ether;
+        // Amount in is ~$1,700,000 of ether...
+        uint256 _amountIn = 1_000 ether;
 
         DataTypes.Preferences memory _preferences =
             DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: uint96(KYOTOPAY_DECIMALS - 1)});
@@ -973,7 +973,7 @@ contract Pay is Fork {
 
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
-            tokenIn: USDC_ADDRESS,
+            tokenIn: WBTC_ADDRESS,
             uniFee: 3_000,
             amountIn: _amountIn,
             amountOut: expectedUSDC,
@@ -982,8 +982,7 @@ contract Pay is Fork {
         }); 
 
         vm.startPrank(RANDOM_USER);
-
-        // Correct fee for this pool is 0.3%, which is 3000...
+        
         disburser.pay(params);
 
         vm.stopPrank();
