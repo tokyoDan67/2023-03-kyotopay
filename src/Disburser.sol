@@ -47,10 +47,47 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         WETH_ADDRESS = _wethAddress;
     }
 
-    function receivePayment(address _payer, address _tokenIn, uint256 _amountIn, uint256 _amountOut, uint24 _uniFee)
+    function receivePayment(DataTypes.ReceiveParams memory _params)
         external
         whenNotPaused
-    {}
+    {
+        // Reconstruct params
+        DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
+            recipient: msg.sender,
+            tokenIn: _params.tokenIn,
+            uniFee: _params.uniFee,
+            amountIn: _params.amountIn,
+            amountOut: _params.amountOut,
+            deadline: _params.deadline, 
+            data: _params.data
+        });
+
+        // validate input params
+        _validateInputParams(paymentParams);
+
+        // get payer funds
+        _getPayerFunds(_params.payer, _params.tokenIn, _params.amountIn);
+
+        _pay(paymentParams);
+    }
+
+    // function receiveEthPayment() external payable whenNotPaused {
+    //     // Cache vars
+    //     uint256 msgValue = msg.value;
+    //     address wethAddress = WETH_ADDRESS;
+
+    //     // Reconstruct params
+    //     DataTypes.PayParams memory params = DataTypes.PayParams({
+    //         recipient: _payEthParams.recipient,
+    //         tokenIn: wethAddress, 
+    //         uniFee: _payEthParams.uniFee,
+    //         amountIn: msgValue,
+    //         amountOut: _payEthParams.amountOut,
+    //         deadline: _payEthParams.deadline,
+    //         data: _payEthParams.data 
+    //     });
+    //     // get payer funds
+    // }
 
     /**
      * @notice pays a recipient in their preferred token from a given input token
@@ -174,27 +211,19 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         // swap currency on uniswap
         return ISwapRouter(_uniswapSwapRouterAddress).exactInputSingle(uniParams);
     }
-    /**
-     * @dev Internal function to validate input parameters. Reverts if given invalid input params.
-     * Note: Uniswap fees for pools are 0.01%, 0.05%, 0.30%, and 1.00%
-     * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
-     */
-
-    function _validateInputParams(DataTypes.PayParams memory _params) internal view {
-        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3_000) && (_params.uniFee != 10_000)) {
-            revert Errors.InvalidUniFee();
-        }
-        if (!(KYOTO_HUB.isWhitelistedInputToken(_params.tokenIn))) revert Errors.InvalidToken();
-        if (_params.recipient == address(0)) revert Errors.ZeroAddress();
-        if (_params.amountIn == 0 || _params.amountOut == 0) revert Errors.InvalidAmount();
-        if (_params.deadline < block.timestamp) revert Errors.InvalidDeadline();
-    }
 
     /**
      * @dev safe transfers funds from the user to address(this)
      */
     function _getSenderFunds(address _tokenAddress, uint256 _amountIn) internal {
-        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amountIn);
+        _getPayerFunds(msg.sender, _tokenAddress, _amountIn);
+    }
+
+    /**
+     * @dev safe transfers funds from the payer to address(this)
+     */
+    function _getPayerFunds(address _payer, address _tokenAddress, uint256 _amountIn) internal {
+        IERC20(_tokenAddress).safeTransferFrom(_payer, address(this), _amountIn);
     }
 
     /**
@@ -209,6 +238,21 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         IERC20(_tokenAddress).safeTransfer(_recipient, amountToTransfer);
 
         emit Events.Payment(_recipient, _tokenAddress, amountToTransfer, _data);
+    }
+
+    /**
+     * @dev Internal function to validate input parameters. Reverts if given invalid input params.
+     * Note: Uniswap fees for pools are 0.01%, 0.05%, 0.30%, and 1.00%
+     * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
+     */
+    function _validateInputParams(DataTypes.PayParams memory _params) internal view {
+        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3_000) && (_params.uniFee != 10_000)) {
+            revert Errors.InvalidUniFee();
+        }
+        if (!(KYOTO_HUB.isWhitelistedInputToken(_params.tokenIn))) revert Errors.InvalidToken();
+        if (_params.recipient == address(0)) revert Errors.ZeroAddress();
+        if (_params.amountIn == 0 || _params.amountOut == 0) revert Errors.InvalidAmount();
+        if (_params.deadline < block.timestamp) revert Errors.InvalidDeadline();
     }
 
     /**
