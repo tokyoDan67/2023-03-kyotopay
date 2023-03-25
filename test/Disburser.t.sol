@@ -39,8 +39,8 @@ contract DisburserHarness is Disburser {
         _getSenderFunds(_tokenAddress, _amountIn);
     }
 
-    function sendRecipientFunds(address _tokenAddress, address _recipient, uint256 _amount) external {
-        _sendRecipientFunds(_tokenAddress, _recipient, _amount);
+    function sendRecipientFunds(address _recipient, address _tokenAddress, uint256 _amount, bytes32 _data) external {
+        _sendRecipientFunds(_recipient, _tokenAddress,  _amount, _data);
     }
 }
 
@@ -212,12 +212,16 @@ contract InternalFunctions is Test, Helper {
         uint256 _fee = disburserHarness.getAdminFee();
         uint256 _decimals = disburserHarness.PRECISION_FACTOR();
         uint256 _toSend = 1_000 ether;
+        bytes32 _data = keccak256(abi.encode(USDC_ADDRESS));
 
         uint256 feePayment = (_fee * _toSend) / _decimals;
+        uint256 recipientPayment = _toSend - feePayment;
 
         _transferMockERC20(address(disburserHarness), _toSend);
 
-        disburserHarness.sendRecipientFunds(address(mockERC20), RANDOM_USER, _toSend);
+        vm.expectEmit(true, true, true, true);
+        emit Events.Payment( RANDOM_USER, address(mockERC20), recipientPayment, _data);
+        disburserHarness.sendRecipientFunds(RANDOM_USER, address(mockERC20), _toSend, _data);
 
         assertEq(mockERC20.balanceOf(address(disburserHarness)), feePayment);
         assertEq(mockERC20.balanceOf(RANDOM_USER), (_toSend - feePayment));
@@ -784,10 +788,13 @@ contract Pay is Fork {
         (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
+        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
+
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, params.amountIn, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, recipientPayment, params.data);
 
         disburser.pay(params);
 
@@ -795,9 +802,6 @@ contract Pay is Fork {
 
         (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
-
-        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
 
         /**
          * Assert admin fee and recipientPayment are correct given logic...
@@ -835,10 +839,13 @@ contract Pay is Fork {
         (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
 
+        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
+
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, params.amountIn, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, recipientPayment, params.data);
 
         disburser.pay(params);
 
@@ -846,9 +853,6 @@ contract Pay is Fork {
 
         (uint256 userUSDCBalanceAfter, uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
-
-        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
 
         /**
          * Assert admin fee and recipientPayment are correct given logic...
@@ -896,6 +900,9 @@ contract Pay is Fork {
         uint256 expectedWeth =
             (_amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
 
+        uint256 adminFee = (expectedWeth * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = expectedWeth - adminFee;
+
         vm.startPrank(RANDOM_USER);
 
         DataTypes.PayParams memory params = DataTypes.PayParams({
@@ -908,10 +915,9 @@ contract Pay is Fork {
             data: bytes32(uint256(67))
         }); 
 
-
-        // Correct fee for this pool is 0.05%, which is 500...
-        vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, _amountIn, params.data);
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, expectedWeth, params.data);
 
         disburser.pay(params);
 
@@ -919,9 +925,6 @@ contract Pay is Fork {
 
         (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
-
-        uint256 adminFee = (expectedWeth * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = expectedWeth - adminFee;
 
         assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), _amountIn);
 
@@ -971,6 +974,9 @@ contract Pay is Fork {
         uint256 expectedUSDC = (_amountIn * uint256(wbtcBtcConversionRate) * uint256(btcUSDCPrice))
             / ((10 ** (WBTC_DECIMALS - USDC_DECIMALS)) * (10 ** btcUSDCDecimals) * (10 ** wbtcBtcConversionDecimals));
 
+        uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
+
+
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
             tokenIn: WBTC_ADDRESS,
@@ -989,8 +995,6 @@ contract Pay is Fork {
 
         (uint256 recipientUSDCBalanceAfter, uint256 disburserUSDCBalanceAfter,) =
             getTokenBalances(USDC_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
-
-        uint256 adminFee = (expectedUSDC * FEE) / KYOTOPAY_DECIMALS;
 
         assertEq((userWbtcBalanceBefore - WBTC_CONTRACT.balanceOf(RANDOM_USER)), _amountIn, "Incorrect user balance");
 
@@ -1022,10 +1026,13 @@ contract Pay is Fork {
         (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
+        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
+
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, recipientPayment, params.data);
 
         // Amount out doesn't matter here...
         disburser.payEth{value: _amountIn}(params);
@@ -1034,9 +1041,6 @@ contract Pay is Fork {
 
         (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
-
-        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
 
         /**
          * Assert admin fee and recipientPayment are correct given logic...
@@ -1077,10 +1081,13 @@ contract Pay is Fork {
         (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
 
+        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
+        
         vm.startPrank(RANDOM_USER);
 
         vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, params.data);
+        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, recipientPayment, params.data);
 
         // Amount out doesn't matter here...
         disburser.payEth{value: _amountIn}(params);
@@ -1089,9 +1096,6 @@ contract Pay is Fork {
 
         (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
             getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
-
-        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
-        uint256 recipientPayment = _amountIn - ((_amountIn * FEE) / KYOTOPAY_DECIMALS);
 
         /**
          * Assert admin fee and recipientPayment are correct given logic...
@@ -1151,8 +1155,9 @@ contract Pay is Fork {
 
         vm.startPrank(RANDOM_USER);
 
-        vm.expectEmit(true, true, true, true);
-        emit Events.Payment(RANDOM_RECIPIENT, WETH_ADDRESS, _amountIn, params.data);
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_RECIPIENT, USDC_ADDRESS, expectedUSDC, params.data);
 
         disburser.payEth{value: _amountIn}(params);
 

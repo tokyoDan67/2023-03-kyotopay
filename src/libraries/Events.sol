@@ -31,9 +31,9 @@ library Events {
 
     event PreferencesSet(address indexed msgSender, address token, uint96 slippageAllowed);
 
-    /////////////////
-    ///   Payer   ///
-    /////////////////
+    /////////////////////
+    ///   Disburser   ///
+    /////////////////////
 
     /**
      * Emitted to pass data from payment function

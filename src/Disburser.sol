@@ -128,9 +128,8 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
 
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
         if ((_params.tokenIn == preferences.tokenAddress) || !(areValidPreferences)) {
-            _sendRecipientFunds(_params.tokenIn, _params.recipient, _params.amountIn);
-            _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
-
+            // transfer funds to recipient, pays fee, emits event
+            _sendRecipientFunds(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
             return;
         }
 
@@ -138,11 +137,8 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
             _params.tokenIn, preferences.tokenAddress, _params.amountIn, _params.amountOut, _params.deadline, _params.uniFee, preferences.slippageAllowed
         );
 
-        // transfer funds to recipient (will pay the owners here too)
-        _sendRecipientFunds(preferences.tokenAddress, _params.recipient, swapOutput);
-
-        // emit any data for end user use
-        _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
+        // transfer funds to recipient, pays fee, emits event
+        _sendRecipientFunds(_params.recipient, preferences.tokenAddress, swapOutput, _params.data);
     }
 
     /**
@@ -204,12 +200,15 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     /**
      * @dev safeTransfer tokens to a given recipient given a ERC20 token address and amount to send
      */
-    function _sendRecipientFunds(address _tokenAddress, address _recipient, uint256 _amount) internal {
+    function _sendRecipientFunds(address _recipient, address _tokenAddress, uint256 _amount, bytes32 _data) internal {
         // calculate the owner payment, this amount will stay in the contract and can be withdrawn at will (no reason to make superfluous transfers)
         uint256 ownerPayment = (_amount * adminFee) / PRECISION_FACTOR;
+        uint256 amountToTransfer = _amount - ownerPayment; 
 
         // pay the recipient the excess
-        IERC20(_tokenAddress).safeTransfer(_recipient, _amount - ownerPayment);
+        IERC20(_tokenAddress).safeTransfer(_recipient, amountToTransfer);
+
+        emit Events.Payment(_recipient, _tokenAddress, amountToTransfer, _data);
     }
 
     /**
@@ -218,14 +217,6 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      */
     function _validatePreferences(DataTypes.Preferences memory _preferences) internal view returns (bool) {
         return ((_preferences.slippageAllowed != 0) && (KYOTO_HUB.isWhitelistedOutputToken(_preferences.tokenAddress)));
-    }
-
-    /**
-     * @dev cuts down on bytecode
-     */
-    // (_recipient, _tokenIn, _amountIn, _data);
-    function _emitPaymentEvent(address _recipient, address _tokenIn, uint256 _amountIn, bytes32 _data) internal {
-        emit Events.Payment(_recipient, _tokenIn, _amountIn, _data);
     }
 
     //////////////////////////////
