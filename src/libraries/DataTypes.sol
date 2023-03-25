@@ -21,6 +21,14 @@ library DataTypes {
         bytes32 data;
     }
 
+    struct PayEthParams{
+        address recipient;
+        uint24 uniFee;
+        uint256 amountOut;
+        uint256 deadline;
+        bytes32 data;
+    }
+
     struct ReceiveParams {
         address payer;
         address tokenIn;

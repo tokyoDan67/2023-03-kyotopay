@@ -24,15 +24,7 @@ interface IDisburser {
      *  - The user's token balance > '_amountIn'
      *  - The user has approve the contract to transfer their tokens
      */
-    function pay(
-        address _recipient,
-        address _tokenIn,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        uint256 _deadline,
-        uint24 _uniFee,
-        bytes32 _data
-    ) external;
+    function pay(DataTypes.PayParams memory _params) external;
 
     /**
      * Pays a recipient in their preferred token from the given ether
@@ -46,7 +38,7 @@ interface IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(address _recipient, uint256 _amountOut, uint256 _deadline, uint24 _uniFee, bytes32 _data)
+    function payEth(DataTypes.PayEthParams memory _params)
         external
         payable;
 }

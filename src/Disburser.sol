@@ -86,7 +86,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(DataTypes.PayParams memory _params)
+    function payEth(DataTypes.PayEthParams memory _payEthParams)
         external
         payable
         whenNotPaused
@@ -95,13 +95,21 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         uint256 msgValue = msg.value;
         address wethAddress = WETH_ADDRESS;
 
-        _params.tokenIn = wethAddress;
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: _payEthParams.recipient,
+            tokenIn: wethAddress, 
+            uniFee: _payEthParams.uniFee,
+            amountIn: msgValue,
+            amountOut: _payEthParams.amountOut,
+            deadline: _payEthParams.deadline,
+            data: _payEthParams.data 
+        });
 
-        _validateInputParams(_params);
+        _validateInputParams(params);
 
-        IWETH9(wethAddress).deposit{value: _msgValue}();
+        IWETH9(wethAddress).deposit{value: msgValue}();
 
-        _pay(_params);
+        _pay(params);
     }
 
     //////////////////////////////////
@@ -115,11 +123,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      */
     function _pay(DataTypes.PayParams memory _params) internal {
         // Cache the recipient's preferences
-        DataTypes.Preferences memory _preferences = KYOTO_HUB.getRecipientPreferences(_recipient);
-        bool areValidPreferences = _validatePreferences(_preferences);
+        DataTypes.Preferences memory preferences = KYOTO_HUB.getRecipientPreferences(_params.recipient);
+        bool areValidPreferences = _validatePreferences(preferences);
 
         // If the sender's token is the recipient's preferred token or recipient's preferences haven't been set, transfer directly and stop execution
-        if ((_params.tokenIn == _preferences.tokenAddress) || !(areValidPreferences)) {
+        if ((_params.tokenIn == preferences.tokenAddress) || !(areValidPreferences)) {
             _sendRecipientFunds(_params.tokenIn, _params.recipient, _params.amountIn);
             _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);
 
@@ -127,11 +135,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         }
 
         uint256 swapOutput = _executeSwap(
-            _params.tokenIn, _params.preferences.tokenAddress, _params.amountIn, _params.amountOut, _params.deadline, _params.uniFee, _preferences.slippageAllowed
+            _params.tokenIn, preferences.tokenAddress, _params.amountIn, _params.amountOut, _params.deadline, _params.uniFee, preferences.slippageAllowed
         );
 
         // transfer funds to recipient (will pay the owners here too)
-        _sendRecipientFunds(_preferences.tokenAddress, _params.recipient, swapOutput);
+        _sendRecipientFunds(preferences.tokenAddress, _params.recipient, swapOutput);
 
         // emit any data for end user use
         _emitPaymentEvent(_params.recipient, _params.tokenIn, _params.amountIn, _params.data);

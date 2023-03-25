@@ -8,3 +8,6 @@ Disburser is used for payments while KyotoPay is used for Preferences
 
 # To Do
 - Change params in Disburser to structs
+- Test pay deadlines
+- Update payment event to track the token out and amount transferred
+- Adjust tests to account for UNI fees
