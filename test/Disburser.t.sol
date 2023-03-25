@@ -388,8 +388,6 @@ contract Pay is Fork {
     }
 
     function testFork_Pay_RevertIf_RecipientAddressZero() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: address(0),
             tokenIn: USDC_ADDRESS,
@@ -400,6 +398,8 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert(Errors.ZeroAddress.selector);
         disburser.pay(params);
 
@@ -407,8 +407,6 @@ contract Pay is Fork {
     }
 
     function testFork_Pay_RevertIf_InvalidUniFee() public {
-        vm.startPrank(RANDOM_USER);
-
         uint24 _invalidUniFee = 333;
 
         DataTypes.PayParams memory params = DataTypes.PayParams({
@@ -420,6 +418,8 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+
+        vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidUniFee.selector);
         disburser.pay(params);
@@ -440,13 +440,15 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert("Pausable: paused");
         disburser.pay(params);
+
+        vm.stopPrank();
     }
 
     function testFork_Pay_RevertIf_InvalidInputToken() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
             tokenIn: LOOKS_ADDRESS,
@@ -456,6 +458,7 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+        vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidToken.selector);
         disburser.pay(params);
@@ -464,8 +467,6 @@ contract Pay is Fork {
     }
 
     function testFork_Pay_RevertIf_InvalidAmountIn() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
             tokenIn: USDC_ADDRESS,
@@ -475,6 +476,7 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+        vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
         disburser.pay(params);
@@ -483,8 +485,6 @@ contract Pay is Fork {
     }
 
     function tesFork_Pay_RevertIf_InvalidAmountOut() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
             tokenIn: USDC_ADDRESS,
@@ -494,6 +494,7 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+        vm.startPrank(RANDOM_USER);
 
         vm.expectRevert(Errors.InvalidAmount.selector);
         disburser.pay(params);
@@ -630,8 +631,6 @@ contract Pay is Fork {
         uint256 expectedUSDC =
             (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
 
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: RANDOM_RECIPIENT,
             uniFee: 500,
@@ -639,6 +638,8 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+
+        vm.startPrank(RANDOM_USER);
 
         vm.expectRevert("Too little received");
         disburser.payEth{value: _amountIn}(params);
@@ -657,13 +658,15 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert("Pausable: paused");
         disburser.payEth{value: 1 ether}(params);
+
+        vm.stopPrank();
     }
 
     function testFork_PayETH_RevertIf_RecipientAddressZero() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: address(0),
             uniFee: 100,
@@ -672,6 +675,8 @@ contract Pay is Fork {
             data: bytes32(0)
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert(Errors.ZeroAddress.selector);
         disburser.payEth{value: 1 ether}(params);
 
@@ -679,8 +684,6 @@ contract Pay is Fork {
     }
 
     function testFork_PayEth_RevertIf_WrongUniFee() public {
-        vm.startPrank(RANDOM_USER);
-
         uint24 _invalidUniFee = 333;
 
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
@@ -691,6 +694,8 @@ contract Pay is Fork {
             data: bytes32(0)
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert(Errors.InvalidUniFee.selector);
         disburser.payEth{value: 1 ether}(params);
 
@@ -700,8 +705,6 @@ contract Pay is Fork {
     function testFork_PayEth_RevertIf_InvalidInputToken() public {
         kyotoHub.revokeFromInputWhitelist(WETH_ADDRESS);
 
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: RANDOM_RECIPIENT,
             uniFee: 100,
@@ -709,6 +712,8 @@ contract Pay is Fork {
             deadline: block.timestamp,
             data: bytes32(0) 
         }); 
+
+        vm.startPrank(RANDOM_USER); 
 
         vm.expectRevert(Errors.InvalidToken.selector);
         disburser.payEth{value: 1 ether}(params);
@@ -717,8 +722,6 @@ contract Pay is Fork {
     }
 
     function testFork_PayEth_RevertIf_InvalidAmountIn() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: RANDOM_RECIPIENT,
             uniFee: 100,
@@ -727,6 +730,8 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert(Errors.InvalidAmount.selector);
         disburser.payEth{value: 0}(params);
 
@@ -734,8 +739,6 @@ contract Pay is Fork {
     }
 
     function testFork_PayEth_RevertIf_InvalidAmountOut() public {
-        vm.startPrank(RANDOM_USER);
-
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: RANDOM_RECIPIENT,
             uniFee: 100,
@@ -744,6 +747,8 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert(Errors.InvalidAmount.selector);
         disburser.payEth{value: 1 ether}(params);
 
@@ -751,8 +756,6 @@ contract Pay is Fork {
     }
 
     function testFork_PayEth_RevertIf_NotEnoughETH() public {
-        vm.startPrank(RANDOM_USER);
-
         uint256 userETHBalance = RANDOM_USER.balance;
 
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
@@ -763,8 +766,48 @@ contract Pay is Fork {
             data: bytes32(0) 
         }); 
 
+        vm.startPrank(RANDOM_USER);
+
         vm.expectRevert();
         disburser.payEth{value: (userETHBalance + 1)}(params);
+
+        vm.stopPrank();
+    }
+
+    function testFork_Pay_RevertIf_InvalidDeadline() public {
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: RANDOM_RECIPIENT,
+            tokenIn: USDC_ADDRESS,
+            uniFee: 3_000,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp - 1,
+            data: bytes32(0) 
+        }); 
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert(Errors.InvalidDeadline.selector);
+        disburser.pay(params);
+
+        vm.stopPrank();
+    }
+
+    function testFork_PayEth_RevertIf_InvalidDeadline() public {
+        uint256 _amountIn = 1 ether;
+
+        DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
+            recipient: RANDOM_RECIPIENT,
+            uniFee: 100,
+            amountOut: 1 ether,
+            deadline: block.timestamp - 1,
+            data: bytes32(0) 
+        }); 
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert(Errors.InvalidDeadline.selector);
+        disburser.payEth{value: _amountIn}(params);
 
         vm.stopPrank();
     }
