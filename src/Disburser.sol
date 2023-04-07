@@ -19,6 +19,7 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 //   - Add a receive function
 //   - Add EIP712 signatures
 //   - Update the deadline to be passed in by the frontend
+//   - Add vendor payments
 
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
@@ -32,7 +33,10 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     address public immutable WETH_ADDRESS;
 
     // adminFee is denominated in PRECISION_FACTOR.  For example, a value for fee of 200 = 2%
-    uint256 private adminFee;
+    uint256 public adminFee;
+
+    mapping(address => uint256) public partnerDiscounts;
+
 
     constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress)
         HubOwnable(_kyotoHub)
@@ -47,6 +51,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         WETH_ADDRESS = _wethAddress;
     }
 
+    /**
+     * @notice Function to receive a payment in the msg.sender's preferred output token
+     * The msg.sender should receive the input token from the payer before calling this function
+     * @param _params the parameters
+     */
     function receivePayment(DataTypes.ReceiveParams memory _params)
         external
         whenNotPaused
@@ -65,8 +74,8 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         // validate input params
         _validateInputParams(paymentParams);
 
-        // get payer funds
-        _getPayerFunds(_params.payer, _params.tokenIn, _params.amountIn);
+        // get payer funds from msg.sender
+        _getSenderFunds(_params.tokenIn, _params.amountIn);
 
         _pay(paymentParams);
     }
@@ -93,11 +102,11 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * @notice pays a recipient in their preferred token from a given input token
      * @param _params the parameters 
      * Requirements:
-     *  - '_recipient' != address(0)
-     *  - '_tokenIn' is a valid input token
-     *  - '_amountIn' != 0
-     *  - 'amountOut' != 0
-     *  - '_uniFee' is a valid Uniswap pool fee
+     *  - '_params.recipient' != address(0)
+     *  - '_params.tokenIn' is a valid input token
+     *  - '_params.amountIn' != 0
+     *  - '_params.amountOut' != 0
+     *  - '_params.uniFee' is a valid Uniswap pool fee
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      *  - The user's token balance > '_amountIn'
      *  - The user has approve the contract to transfer their tokens
@@ -216,14 +225,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * @dev safe transfers funds from the user to address(this)
      */
     function _getSenderFunds(address _tokenAddress, uint256 _amountIn) internal {
-        _getPayerFunds(msg.sender, _tokenAddress, _amountIn);
-    }
-
-    /**
-     * @dev safe transfers funds from the payer to address(this)
-     */
-    function _getPayerFunds(address _payer, address _tokenAddress, uint256 _amountIn) internal {
-        IERC20(_tokenAddress).safeTransferFrom(_payer, address(this), _amountIn);
+        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amountIn);
     }
 
     /**

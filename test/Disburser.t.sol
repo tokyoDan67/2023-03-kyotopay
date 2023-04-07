@@ -16,6 +16,7 @@ import {Fork} from "./reference/Fork.sol";
 import {Helper} from "./reference/Helper.sol";
 import {IWETH9} from "../src/interfaces/IWETH9.sol";
 import {KyotoHub} from "../src/KyotoHub.sol";
+import {PaymentHelper} from "./reference/PaymentHelper.sol";
 import {Disburser} from "../src/Disburser.sol";
 import {MockERC20} from "./reference/MockERC20.sol";
 
@@ -284,107 +285,12 @@ contract Withdraw is Test, Helper {
     }
 }
 
-/**
- * @dev The Uniswap tests fork ETH mainnet
- */
-contract Pay is Fork {
+contract PayFunctions is PaymentHelper {
     using SafeERC20 for IERC20;
-
-    KyotoHub kyotoHub;
-    Disburser disburser;
 
     function setUp() public override {
         // Call Fork setup
-        Fork.setUp();
-
-        // mainnetForkId is defined in reference/Fork.sol
-        mainnetForkId = vm.createSelectFork(MAINNET_RPC_URL, MAINNET_FORK_BLOCK);
-        kyotoHub = new KyotoHub();
-        disburser = new Disburser(FEE, address(kyotoHub), UNISWAP_SWAPROUTER_ADDRESS, WETH_ADDRESS);
-
-        /**
-         * Add inputs
-         */
-        kyotoHub.addToInputWhitelist(WBTC_ADDRESS);
-        kyotoHub.addToInputWhitelist(WETH_ADDRESS);
-        kyotoHub.addToInputWhitelist(DAI_ADDRESS);
-        kyotoHub.addToInputWhitelist(USDC_ADDRESS);
-
-        /**
-         * Add outputs
-         */
-        kyotoHub.addToOutputWhitelist(DAI_ADDRESS);
-        kyotoHub.addToOutputWhitelist(USDC_ADDRESS);
-        kyotoHub.addToOutputWhitelist(WETH_ADDRESS);
-
-        /**
-         * Give RANDOM_USER DAI, USDC, ETH, WBTC, and WETH
-         */
-
-        // Give RANDOM_USER 10,000,000 DAI
-        deal(DAI_ADDRESS, RANDOM_USER, (10_000_000 * (10 ** DAI_DECIMALS)));
-
-        // Give RANDOM_USER 10,000 WBTC
-        deal(WBTC_ADDRESS, RANDOM_USER, (10_000 * (10 ** WBTC_DECIMALS)));
-
-        // Give RANDOM_USER 10,000,000 USDC
-        deal(USDC_ADDRESS, RANDOM_USER, (10_000_000 * (10 ** USDC_DECIMALS)));
-
-        // Give RANDOM_USER 20,000 WETH
-        vm.deal(RANDOM_USER, 20_000 ether);
-        vm.startPrank(RANDOM_USER);
-        IWETH9(WETH_ADDRESS).deposit{value: 10_000 ether}();
-
-        /**
-         *  Set allowances to type(uint256).max
-         *  msg.sender is RANDOM_USER from startPrank() above
-         */
-        DAI_CONTRACT.safeApprove(address(disburser), type(uint256).max);
-        USDC_CONTRACT.safeApprove(address(disburser), type(uint256).max);
-        WETH_CONTRACT.safeApprove(address(disburser), type(uint256).max);
-        WBTC_CONTRACT.safeApprove(address(disburser), type(uint256).max);
-
-        vm.stopPrank();
-    }
-
-    function testFork_SetUp() public {
-        /**
-         * Verify inputs
-         */
-        assertTrue(kyotoHub.isWhitelistedInputToken(WBTC_ADDRESS));
-        assertTrue(kyotoHub.isWhitelistedInputToken(WETH_ADDRESS));
-        assertTrue(kyotoHub.isWhitelistedInputToken(DAI_ADDRESS));
-        assertTrue(kyotoHub.isWhitelistedInputToken(USDC_ADDRESS));
-
-        /**
-         * Verify outputs
-         */
-        assertTrue(kyotoHub.isWhitelistedOutputToken(WETH_ADDRESS));
-        assertTrue(kyotoHub.isWhitelistedOutputToken(DAI_ADDRESS));
-        assertTrue(kyotoHub.isWhitelistedOutputToken(USDC_ADDRESS));
-
-        /**
-         * Verify balances
-         */
-        assertEq(DAI_CONTRACT.balanceOf(RANDOM_USER), 10_000_000 * (10 ** DAI_DECIMALS));
-        assertEq(USDC_CONTRACT.balanceOf(RANDOM_USER), 10_000_000 * (10 ** USDC_DECIMALS));
-        assertEq(WETH_CONTRACT.balanceOf(RANDOM_USER), 10_000 ether);
-        assertEq(WBTC_CONTRACT.balanceOf(RANDOM_USER), 10_000 * (10 ** WBTC_DECIMALS));
-        assertEq(RANDOM_USER.balance, 10_000 ether);
-
-        /**
-         * Verify allowances
-         */
-        assertEq(DAI_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
-        assertEq(USDC_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
-        assertEq(WBTC_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
-        assertEq(WETH_CONTRACT.allowance(RANDOM_USER, address(disburser)), type(uint256).max);
-
-        /**
-         * Verify constants in Helper
-         */
-        assertEq(FEE, disburser.getAdminFee());
-        assertEq(KYOTOPAY_DECIMALS, disburser.PRECISION_FACTOR());
+        PaymentHelper.setUp();
     }
 
     function testFork_Pay_RevertIf_RecipientAddressZero() public {
@@ -812,7 +718,7 @@ contract Pay is Fork {
         vm.stopPrank();
     }
 
-    function testFork_Pay_NoPreferenceSet() public {
+    function testFork_Pay_NoPreferencesSet() public {
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
             tokenIn: USDC_ADDRESS,
@@ -874,10 +780,6 @@ contract Pay is Fork {
 
         vm.prank(RANDOM_RECIPIENT);
         kyotoHub.setPreferences(_preferences);
-
-        DataTypes.Preferences memory _recipientPreferences = kyotoHub.getRecipientPreferences(RANDOM_RECIPIENT);
-        assertEq(_recipientPreferences.tokenAddress, USDC_ADDRESS);
-        assertEq(_recipientPreferences.slippageAllowed, 9_900);
 
         (uint256 userUSDCBalanceBefore, uint256 recipientUSDCBalanceBefore, uint256 disburserUSDCBalanceBefore) =
             getTokenBalances(USDC_CONTRACT, RANDOM_USER, RANDOM_RECIPIENT, address(disburser));
@@ -1183,18 +1085,7 @@ contract Pay is Fork {
         // Defined in Fork.sol...
         (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
 
-        // USDC uses 6 decimals
-        // WETH uses 18 decimals
-        // Chainlink's pricefeed uses 8 decimals
-        // However: We need the calculation to end up using the USDC decimals, i.e. 10^6
-
-        // _amountIn = WETH_Amount * 10^18
-        // ethUSDCPrice = ETH_Price * 10^8
-        // expectedUSDC = (WETH_Amount * 10^18) * ((ETH_Price * 10^8) * (10**(6-18))) / (10^8)
-        // Algebraically, 10**(6-18) in the numerator can be made 10**(18-6) in the denominator
-        // Note: the 10^8s cancel each other out in the numberator and denominator, leaving (10^18)/(10^(18-6)), which is just 10^6
-
-        // Therefore: expectedUSDC = (_amountIn * ethUSDCPrice) / ((10^8) * (10^(18-6)))
+        // See prior tests to understand math for this conversion.... 
 
         uint256 wethToUsdcConversion =
             (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
@@ -1225,4 +1116,102 @@ contract Pay is Fork {
         assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.001e18);
         assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.001e18);
     }
+
+    function test_ReceivePayment_NoPreferencesSet() public {
+        DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
+            tokenIn: USDC_ADDRESS,
+            uniFee: 100,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        }); 
+
+        (uint256 userUSDCBalanceBefore, , uint256 disburserUSDCBalanceBefore) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(0), address(disburser));
+
+        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectEmit(true, true, true, true);
+        emit Events.Payment(RANDOM_USER, USDC_ADDRESS, userPaymentReceived, params.data);
+
+        disburser.receivePayment(params);
+
+        vm.stopPrank();
+
+        (uint256 userUSDCBalanceAfter, , uint256 disburserUSDCBalanceAfter) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(0), address(disburser));
+
+        /**
+         * Assert admin fee and recipientPayment are correct given logic...
+         */
+        assertEq(adminFee, 1_000_000);
+        assertEq(userPaymentReceived, 99_000_000);
+
+        // User balance should be the same minus the admin fee
+        assertEq((userUSDCBalanceBefore - adminFee), userUSDCBalanceAfter);
+        assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee); 
+    }
+
+    function test_ReceivePayment_SameInputAndOutput() public {
+        DataTypes.Preferences memory _preferences =
+        DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
+
+        vm.prank(RANDOM_USER);
+        kyotoHub.setPreferences(_preferences);
+
+        DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
+            tokenIn: USDC_ADDRESS,
+            uniFee: 100,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        }); 
+
+        (uint256 userUSDCBalanceBefore, , uint256 disburserUSDCBalanceBefore) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(0), address(disburser));
+
+        uint256 adminFee = (params.amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = params.amountIn - ((params.amountIn * FEE) / KYOTOPAY_DECIMALS);
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectEmit(true, true, true, true);
+        emit Events.Payment(RANDOM_USER, USDC_ADDRESS, userPaymentReceived, params.data);
+
+        disburser.receivePayment(params);
+
+        vm.stopPrank();
+
+        (uint256 userUSDCBalanceAfter, , uint256 disburserUSDCBalanceAfter) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(0), address(disburser));
+
+        /**
+         * Assert admin fee and recipientPayment are correct given logic...
+         */
+        assertEq(adminFee, 1_000_000);
+        assertEq(userPaymentReceived, 99_000_000);
+
+        // User balance should be the same minus the admin fee
+        assertEq((userUSDCBalanceBefore - adminFee), userUSDCBalanceAfter);
+        assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee); 
+    }
+
+    function test_ReceivePayment_InputUSDC_OutputWETH() public {
+        DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
+            tokenIn: USDC_ADDRESS,
+            uniFee: 100,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        }); 
+
+
+    }
+
 }

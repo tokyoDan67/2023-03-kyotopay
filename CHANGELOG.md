@@ -8,4 +8,7 @@ Disburser is used for payments while KyotoPay is used for Preferences
 - Updated the payment event to track the token out and amount transferred out rather than the token in and amount transferred in
 
 # To Do
-- Adjust tests to account for UNI fees
+- Add Receive tests.  Possibly refactor so that the disburser tests are separated by file
+- Refactor Receive
+- EIP712
+- Vendor fee reduction OR fee share

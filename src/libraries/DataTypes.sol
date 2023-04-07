@@ -30,7 +30,6 @@ library DataTypes {
     }
 
     struct ReceiveParams {
-        address payer;
         address tokenIn;
         uint24 uniFee;
         uint256 amountIn;
