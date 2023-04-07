@@ -836,23 +836,7 @@ contract PayFunctions is PaymentHelper {
 
         uint256 userUSDCBalanceBefore = USDC_CONTRACT.balanceOf(RANDOM_USER);
 
-        // Defined in Fork.sol...
-        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
-
-        // USDC uses 6 decimals
-        // WETH uses 18 decimals
-        // Chainlink's pricefeed uses 8 decimals
-        // However: We need the calculation to end up using the WETH decimals, i.e. 10^18
-
-        // amountIn = USDC_Amount * 10^6
-        // ethUSDCPrice = ETH_Price * 10^8
-        // expectedWeth = (USDC_Amount * 10^6) * (10^8) * (10^(18-6)) / (ETH_Price * 10^8)
-        // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
-
-        // Therefore: expectedWeth = (_amountIn) * (10^8) * (10^(18-6)) / ethUSDCPrice
-
-        uint256 usdcToWethConversion =
-            (params.amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
+        uint256 usdcToWethConversion = _convertUsdcToWeth(params.amountIn);
 
         // Adjust for Uniswap fee
         params.amountOut = (usdcToWethConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
@@ -906,28 +890,7 @@ contract PayFunctions is PaymentHelper {
 
         uint256 userWbtcBalanceBefore = WBTC_CONTRACT.balanceOf(RANDOM_USER);
 
-        // Defined in Fork.sol...
-        (int256 btcUSDCPrice, uint8 btcUSDCDecimals) = getBtcToUSDCPriceAndDecimals();
-
-        // Unlike WETH and ETH, WBTC and BTC don't trade in parity...
-        (int256 wbtcBtcConversionRate, uint8 wbtcBtcConversionDecimals) = getWbtcToBtcConversionRateAndDecimals();
-
-        // WBTC uses 8 decimals
-        // USDC uses 6 decimals
-        // Chainlink's pricefeeds uses 8 decimals
-        // However: We need the calculation to end up using the USDC decimals, i.e. 10^6
-
-        // amountIn = WBTC_Amount * 10^8
-        // btcUSDCPrice = BTC_Price * 10^8
-        // wbtcBtcConversionRate = Conversion_Rate * 10^8
-        // expectedUSDC = (WBTC_Amount * 10^8) * (Conversion_Rate * 10^8) * (btcUSDPrice * 10^8) * (10^(6-8)) / (10^8) * 10(^8)
-        // Algebraically, 10^(6-8) in the numerator is the same as 10^(8-6) in the denominator
-        // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
-
-        // Therefore: wbtcToUsdcConversion = amountIn * wbtcBtcConversionRate * btcUSDCPrice) / (10(8-6) * (10^8) * 10(^8))
-
-        uint256 wbtcToUsdcConversion = (params.amountIn * uint256(wbtcBtcConversionRate) * uint256(btcUSDCPrice))
-            / ((10 ** (WBTC_DECIMALS - USDC_DECIMALS)) * (10 ** btcUSDCDecimals) * (10 ** wbtcBtcConversionDecimals));
+        uint256 wbtcToUsdcConversion = _convertWbtcToUsdc(params.amountIn);
 
         // Adjust for Uniswap fee
         params.amountOut = (wbtcToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
@@ -1082,14 +1045,8 @@ contract PayFunctions is PaymentHelper {
 
         uint256 userEthBalanceBefore = RANDOM_USER.balance;
 
-        // Defined in Fork.sol...
-        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
-
-        // See prior tests to understand math for this conversion.... 
-
-        uint256 wethToUsdcConversion =
-            (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
-
+        uint256 wethToUsdcConversion = _wethToUsdcConversion(_amountIn);
+        
         // Adjust for Uniswap fee
         params.amountOut = params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
 

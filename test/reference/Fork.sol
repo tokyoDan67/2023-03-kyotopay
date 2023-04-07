@@ -51,6 +51,57 @@ contract Fork is Helper, Test {
         WBTC_PER_BTC_PRICE_FEED = AggregatorV3Interface(0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23);
     }
 
+    function _convertUsdcToWeth(uint256 _amountIn) internal returns (uint256) {
+        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
+
+        // USDC uses 6 decimals
+        // WETH uses 18 decimals
+        // Chainlink's pricefeed uses 8 decimals
+        // However: We need the calculation to end up using the WETH decimals, i.e. 10^18
+
+        // amountIn = USDC_Amount * 10^6
+        // ethUSDCPrice = ETH_Price * 10^8
+        // expectedWeth = (USDC_Amount * 10^6) * (10^8) * (10^(18-6)) / (ETH_Price * 10^8)
+        // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
+
+        // Therefore: expectedWeth = (_amountIn) * (10^8) * (10^(18-6)) / ethUSDCPrice
+
+        return (_amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
+    }
+
+    function _convertWbtcToUsdc(uint256 _amountIn) internal returns (uint256) {
+        (int256 btcUSDCPrice, uint8 btcUSDCDecimals) = getBtcToUSDCPriceAndDecimals();
+
+        // Unlike WETH and ETH, WBTC and BTC don't trade in parity...
+        (int256 wbtcBtcConversionRate, uint8 wbtcBtcConversionDecimals) = getWbtcToBtcConversionRateAndDecimals();
+
+        // WBTC uses 8 decimals
+        // USDC uses 6 decimals
+        // Chainlink's pricefeeds uses 8 decimals
+        // However: We need the calculation to end up using the USDC decimals, i.e. 10^6
+
+        // amountIn = WBTC_Amount * 10^8
+        // btcUSDCPrice = BTC_Price * 10^8
+        // wbtcBtcConversionRate = Conversion_Rate * 10^8
+        // expectedUSDC = (WBTC_Amount * 10^8) * (Conversion_Rate * 10^8) * (btcUSDPrice * 10^8) * (10^(6-8)) / (10^8) * 10(^8)
+        // Algebraically, 10^(6-8) in the numerator is the same as 10^(8-6) in the denominator
+        // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
+
+        // Therefore: wbtcToUsdcConversion = amountIn * wbtcBtcConversionRate * btcUSDCPrice) / (10(8-6) * (10^8) * 10(^8))
+
+        return (_amountIn * uint256(wbtcBtcConversionRate) * uint256(btcUSDCPrice))
+            / ((10 ** (WBTC_DECIMALS - USDC_DECIMALS)) * (10 ** btcUSDCDecimals) * (10 ** wbtcBtcConversionDecimals));
+    }
+
+    function _convertUsdcToWbtc(uint256 amountIn) internal returns(uint256) {}
+
+    function _wethToUsdcConversion(uint256 amountIn) internal {
+        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
+
+        // See prior tests to understand math for this conversion.... 
+        return (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
+    }
+
     function getEthToUSDCPriceAndDecimals() internal view returns (int256, uint8) {
         (
             /* uint80 roundID */
