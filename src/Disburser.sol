@@ -80,23 +80,31 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         _pay(paymentParams);
     }
 
-    // function receiveEthPayment() external payable whenNotPaused {
-    //     // Cache vars
-    //     uint256 msgValue = msg.value;
-    //     address wethAddress = WETH_ADDRESS;
+    // Note: if the user has not set their preferences, they will receive WETH and not ETH
+    function receiveEthPayment(DataTypes.ReceiveEthParams memory _params) external payable whenNotPaused {
+        // Cache vars
+        uint256 msgValue = msg.value;
+        address wethAddress = WETH_ADDRESS;
 
-    //     // Reconstruct params
-    //     DataTypes.PayParams memory params = DataTypes.PayParams({
-    //         recipient: _payEthParams.recipient,
-    //         tokenIn: wethAddress, 
-    //         uniFee: _payEthParams.uniFee,
-    //         amountIn: msgValue,
-    //         amountOut: _payEthParams.amountOut,
-    //         deadline: _payEthParams.deadline,
-    //         data: _payEthParams.data 
-    //     });
-    //     // get payer funds
-    // }
+        // Reconstruct params
+        DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
+            recipient: msg.sender,
+            tokenIn: wethAddress, 
+            uniFee: _params.uniFee,
+            amountIn: msgValue,
+            amountOut: _params.amountOut,
+            deadline: _params.deadline,
+            data: _params.data 
+        });
+
+        // Get payer funds from msg.sender
+        _validateInputParams(paymentParams);
+
+        // Get WETH from ETH
+        IWETH9(wethAddress).deposit{value: msgValue}();
+
+        _pay(paymentParams);
+    }
 
     /**
      * @notice pays a recipient in their preferred token from a given input token
@@ -108,8 +116,6 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - '_params.amountOut' != 0
      *  - '_params.uniFee' is a valid Uniswap pool fee
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
-     *  - The user's token balance > '_amountIn'
-     *  - The user has approve the contract to transfer their tokens
      */
     function pay(DataTypes.PayParams memory _params) external whenNotPaused {
         _validateInputParams(_params);
@@ -132,7 +138,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(DataTypes.PayEthParams memory _payEthParams)
+    function payEth(DataTypes.PayEthParams memory _params)
         external
         payable
         whenNotPaused
@@ -141,21 +147,24 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         uint256 msgValue = msg.value;
         address wethAddress = WETH_ADDRESS;
 
-        DataTypes.PayParams memory params = DataTypes.PayParams({
-            recipient: _payEthParams.recipient,
+        // Reconstruct params
+        DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
+            recipient: _params.recipient,
             tokenIn: wethAddress, 
-            uniFee: _payEthParams.uniFee,
+            uniFee: _params.uniFee,
             amountIn: msgValue,
-            amountOut: _payEthParams.amountOut,
-            deadline: _payEthParams.deadline,
-            data: _payEthParams.data 
+            amountOut: _params.amountOut,
+            deadline: _params.deadline,
+            data: _params.data 
         });
 
-        _validateInputParams(params);
+        // Validate
+        _validateInputParams(paymentParams);
 
+        // Get WETH from ETH
         IWETH9(wethAddress).deposit{value: msgValue}();
 
-        _pay(params);
+        _pay(paymentParams);
     }
 
     //////////////////////////////////
