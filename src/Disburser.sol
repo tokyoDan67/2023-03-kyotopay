@@ -243,7 +243,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     function _sendRecipientFunds(address _recipient, address _tokenAddress, uint256 _amount, bytes32 _data) internal {
         uint256 partnerDiscount = KYOTO_HUB.getPartnerDiscount(_recipient);
         
-        uint256 fee = partnerDiscount == 0 ? adminFee : adminFee - partnerDiscount;
+        uint256 fee = partnerDiscount > adminFee ? 0 : adminFee - partnerDiscount;
 
         uint256 ownerPayment = (_amount * fee) / PRECISION_FACTOR;
 

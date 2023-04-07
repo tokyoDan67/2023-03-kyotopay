@@ -1048,6 +1048,84 @@ contract ReceiveFunctions is PaymentHelper {
         PaymentHelper.setUp();
     }
 
+     function testFork_ReceivePayment_RevertIf_Paused() public {
+        disburser.pause();
+
+        DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
+            tokenIn: USDC_ADDRESS,
+            uniFee: 500,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert("Pausable: paused");
+        disburser.receivePayment(params);
+
+        vm.stopPrank();
+    }
+
+    function testFork_ReceiveEthPayment_RevertIf_Paused() public {
+        disburser.pause();
+
+        DataTypes.ReceiveEthParams memory params = DataTypes.ReceiveEthParams({
+            uniFee: 500,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert("Pausable: paused");
+        disburser.receiveEthPayment(params);
+
+        vm.stopPrank();
+    }
+
+    /**
+     * @dev Test to see if _validateInputParams is functionings
+     */
+    function testFork_ReceivePayment_RevertIf_InvalidInputToken() public {
+        DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
+            tokenIn: LOOKS_ADDRESS,
+            uniFee: 500,
+            amountIn: 100_000_000,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert(Errors.InvalidToken.selector);
+        disburser.receivePayment(params);
+
+        vm.stopPrank();
+    }
+
+    function testFork_ReceiveEthPayment_RevertIf_InvalidInputToken() public {
+        kyotoHub.revokeFromInputWhitelist(WETH_ADDRESS);
+
+        DataTypes.ReceiveEthParams memory params = DataTypes.ReceiveEthParams({
+            uniFee: 500,
+            amountOut: 99_000_000,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        vm.startPrank(RANDOM_USER);
+
+        vm.expectRevert(Errors.InvalidToken.selector);
+        disburser.receiveEthPayment(params);
+
+        vm.stopPrank();
+    }
+    
+
     function testFork_ReceivePayment_NoPreferencesSet() public {
         DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
             tokenIn: USDC_ADDRESS,
@@ -1182,5 +1260,219 @@ contract ReceiveFunctions is PaymentHelper {
         // Approximately equal within 0.1%
         assertApproxEqRel((userWethBalanceAfter - userWethBalanceBefore), userPaymentReceived, 0.001e18);
         assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.001e18); 
+    }
+
+    function testFuzzFork_ReceiveEthPayment_NoPreferencesSet(uint256 _amountIn) public { 
+        // Bound to upwards of a billion
+        _amountIn = bound(_amountIn, 10_000, (1_000_000_000 * (10 ** USDC_DECIMALS)));
+        
+        DataTypes.ReceiveEthParams memory params = DataTypes.ReceiveEthParams({
+            uniFee: 500,
+            // Doesn't matter here...
+            amountOut: 1,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        /**
+         * Store before balances...
+         */
+        (uint256 userWethBalanceBefore, uint256 disburserWethBalanceBefore, ) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+        
+        uint256 userEthBalanceBefore = address(RANDOM_USER).balance;
+
+        vm.startPrank(RANDOM_USER);
+
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_USER, WETH_ADDRESS, params.amountOut, params.data);
+
+        disburser.receiveEthPayment{value: _amountIn}(params);
+
+        vm.stopPrank();
+
+        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = _amountIn - adminFee;
+
+        (uint256 userWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+
+        assertEq((userEthBalanceBefore - address(RANDOM_USER).balance), _amountIn, "Wrong ETH Balance");
+        assertEq((userWethBalanceAfter - userWethBalanceBefore), userPaymentReceived, "Wrong WETH Balance");
+        assertEq((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, "Wrong Admin Fee");
+    }
+
+    function testForkFuzz_ReceiveEthPayment_SameInputOutput(uint256 _amountIn) public {
+        // Bound to upwards of a billion
+        _amountIn = bound(_amountIn, 10_000, (1_000_000_000 * (10 ** USDC_DECIMALS)));
+
+        // Set user preferences
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
+
+        vm.prank(RANDOM_USER);
+        kyotoHub.setPreferences(_preferences);
+
+        // Bound to upwards of a billion
+        _amountIn = bound(_amountIn, 10_000, (1_000_000_000 * (10 ** USDC_DECIMALS)));
+        
+        DataTypes.ReceiveEthParams memory params = DataTypes.ReceiveEthParams({
+            uniFee: 500,
+            // Doesn't matter here...
+            amountOut: 1,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        /**
+         * Store before balances...
+         */
+        (uint256 userWethBalanceBefore, uint256 disburserWethBalanceBefore, ) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+        
+        uint256 userEthBalanceBefore = address(RANDOM_USER).balance;
+
+        vm.startPrank(RANDOM_USER);
+
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_USER, WETH_ADDRESS, params.amountOut, params.data);
+
+        disburser.receiveEthPayment{value: _amountIn}(params);
+
+        vm.stopPrank();
+
+        uint256 adminFee = (_amountIn * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = _amountIn - adminFee;
+
+        (uint256 userWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+
+        assertEq((userEthBalanceBefore - address(RANDOM_USER).balance), _amountIn, "Wrong ETH Balance");
+        assertEq((userWethBalanceAfter - userWethBalanceBefore), userPaymentReceived, "Wrong WETH Balance");
+        assertEq((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, "Wrong Admin Fee");
+    }
+
+    function testFork_ReceiveEthPayment_InputWethOutputUsdc() public {
+        
+    }
+}
+
+contract PartnerDiscount is PaymentHelper {
+    function setUp() public override {
+        PaymentHelper.setUp();
+    }
+
+    function testFork_Pay_PartnerDiscount() public {
+        uint256 _partnerDiscount = kyotoHub.MAX_FEE();
+
+        // Set the partner discount & admin fee
+        kyotoHub.setPartnerDiscount(RANDOM_RECIPIENT, _partnerDiscount);
+
+        // Amount in is $10,000 USDC
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: RANDOM_RECIPIENT,
+            tokenIn: USDC_ADDRESS,
+            uniFee: 500,
+            amountIn: (10_000 * (10 ** USDC_DECIMALS)),
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(uint256(67))
+        }); 
+
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
+
+        vm.prank(RANDOM_RECIPIENT);
+        kyotoHub.setPreferences(_preferences);
+
+        /**
+         * Store before balances...
+         */
+        (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
+
+        uint256 userUSDCBalanceBefore = USDC_CONTRACT.balanceOf(RANDOM_USER);
+        uint256 usdcToWethConversion = _convertUsdcToWeth(params.amountIn);
+        // Adjust for Uniswap fee
+        params.amountOut = (usdcToWethConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        uint256 adminFee = 0;
+        uint256 recipientPayment = params.amountOut;
+
+        vm.startPrank(RANDOM_USER);
+
+        disburser.pay(params);
+
+        vm.stopPrank();
+
+        (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
+
+        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), params.amountIn, "Wrong user USDC balance");
+
+        // Approximately equal within 0.1%
+        assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.001e18, "Wrong recipient payment");
+        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.001e18, "Wrong admin fee");
+    }
+
+    function testFuzzFork_Pay_PartnerDiscount(uint256 _fee, uint256 _partnerDiscount) public {
+        uint256 maxFee = kyotoHub.MAX_FEE();
+
+        _fee = bound(_fee, 0, maxFee);
+        _partnerDiscount = bound(_partnerDiscount, 0, maxFee);
+
+        // Set the partner discount & admin fee
+        kyotoHub.setPartnerDiscount(RANDOM_RECIPIENT, _partnerDiscount);
+        disburser.setAdminFee(_fee);
+
+        // Amount in is $10,000 USDC
+        DataTypes.PayParams memory params = DataTypes.PayParams({
+            recipient: RANDOM_RECIPIENT,
+            tokenIn: USDC_ADDRESS,
+            uniFee: 500,
+            amountIn: (10_000 * (10 ** USDC_DECIMALS)),
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(uint256(67))
+        }); 
+
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
+
+        vm.prank(RANDOM_RECIPIENT);
+        kyotoHub.setPreferences(_preferences);
+
+        /**
+         * Store before balances...
+         */
+        (uint256 recipientWethBalanceBefore, uint256 disburserWethBalanceBefore,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
+
+        uint256 userUSDCBalanceBefore = USDC_CONTRACT.balanceOf(RANDOM_USER);
+        uint256 usdcToWethConversion = _convertUsdcToWeth(params.amountIn);
+        // Adjust for Uniswap fee
+        params.amountOut = (usdcToWethConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        uint256 feePct = (_partnerDiscount > _fee) ? 0 : _fee - _partnerDiscount;
+
+        uint256 adminFee = (params.amountOut * (feePct)) / KYOTOPAY_DECIMALS;
+        uint256 recipientPayment = params.amountOut - adminFee;
+
+        vm.startPrank(RANDOM_USER);
+
+        disburser.pay(params);
+
+        vm.stopPrank();
+
+        (uint256 recipientWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_RECIPIENT, address(disburser), address(0));
+
+        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), params.amountIn, "Wrong user USDC balance");
+
+        // Approximately equal within 0.1%
+        assertApproxEqRel((recipientWethBalanceAfter - recipientWethBalanceBefore), recipientPayment, 0.001e18, "Wrong recipient payment");
+        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.001e18, "Wrong admin fee");
     }
 }

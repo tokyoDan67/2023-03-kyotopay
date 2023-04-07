@@ -169,6 +169,22 @@ contract Admin is Test, Helper {
         mockERC20 = address(new MockERC20());
     }
 
+    function testFuzz_SetPartnerDiscount(uint256 _partnerDiscount) public {
+        uint256 maxFee = kyotoHub.MAX_FEE();
+        _partnerDiscount = bound(_partnerDiscount, 0, maxFee);
+
+        kyotoHub.setPartnerDiscount(RANDOM_RECIPIENT, _partnerDiscount);
+
+        assertEq(kyotoHub.getPartnerDiscount(RANDOM_RECIPIENT), _partnerDiscount);
+    }
+
+    function test_SetPartnerDiscount_RevertIf_GreaterThanMaxFee() public {
+        uint256 maxFee = kyotoHub.MAX_FEE();
+
+        vm.expectRevert(Errors.InvalidPartnerDiscount.selector);
+        kyotoHub.setPartnerDiscount(RANDOM_RECIPIENT, (maxFee + 1));
+    }
+
     function test_AddToInputWhitelist() public {
         vm.expectEmit(true, true, true, true);
         emit Events.AddedWhitelistedInputToken(mockERC20);
