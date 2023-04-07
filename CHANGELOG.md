@@ -6,9 +6,7 @@ Disburser is used for payments while KyotoPay is used for Preferences
 - Moved datatypes, errors, and events from interfaces to libraries
 - Changed pay() and payEth() arguments to structs rather than primitives Prevents stack too deep errors for those looking to implement the Disburser
 - Updated the payment event to track the token out and amount transferred out rather than the token in and amount transferred in
+- Added Receive functions, enabling smart contracts to receive payments in their preferred ERC20
 
 # To Do
-- Add Receive tests.  Possibly refactor so that the disburser tests are separated by file
-- Refactor Receive
-- EIP712
 - Vendor fee reduction OR fee share

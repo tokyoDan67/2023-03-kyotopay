@@ -52,6 +52,11 @@ library Errors {
     error InvalidDeadline();
 
     /**
+     * Partner discount cannot be above the max fee
+     */
+    error InvalidPartnerDiscount();
+
+    /**
      *  Argument '_tokenIn' is not a valid input token
      */
     error InvalidToken();

@@ -25,7 +25,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
 
     // MAX_ADMIN_FEE is denominated in PRECISION_FACTOR.  I.e. 500 = 5%
-    uint256 public constant MAX_ADMIN_FEE = 500;
+    uint256 public immutable MAX_ADMIN_FEE;
 
     // Decimals is the same as KyotoHubs, 10_000
     uint256 public immutable PRECISION_FACTOR;
@@ -35,20 +35,20 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
     // adminFee is denominated in PRECISION_FACTOR.  For example, a value for fee of 200 = 2%
     uint256 public adminFee;
 
-    mapping(address => uint256) public partnerDiscounts;
-
-
     constructor(uint256 _adminFee, address _kyotoHub, address _uniswapSwapRouterAddress, address _wethAddress)
         HubOwnable(_kyotoHub)
     {
+        PRECISION_FACTOR = KYOTO_HUB.PRECISION_FACTOR();
+        MAX_ADMIN_FEE = KYOTO_HUB.MAX_FEE();
+
         if (_adminFee > MAX_ADMIN_FEE) revert Errors.InvalidAdminFee();
         if (_uniswapSwapRouterAddress == address(0)) revert Errors.ZeroAddress();
         if (_wethAddress == address(0)) revert Errors.ZeroAddress();
 
-        PRECISION_FACTOR = KYOTO_HUB.PRECISION_FACTOR();
-        adminFee = _adminFee;
         UNISWAP_SWAP_ROUTER_ADDRESS = _uniswapSwapRouterAddress;
         WETH_ADDRESS = _wethAddress;
+
+        adminFee = _adminFee;
     }
 
     /**
@@ -232,8 +232,12 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * @dev safeTransfer tokens to a given recipient given a ERC20 token address and amount to send
      */
     function _sendRecipientFunds(address _recipient, address _tokenAddress, uint256 _amount, bytes32 _data) internal {
-        // calculate the owner payment, this amount will stay in the contract and can be withdrawn at will (no reason to make superfluous transfers)
-        uint256 ownerPayment = (_amount * adminFee) / PRECISION_FACTOR;
+        uint256 partnerDiscount = KYOTO_HUB.getPartnerDiscount(_recipient);
+        
+        uint256 fee = partnerDiscount == 0 ? adminFee : adminFee - partnerDiscount;
+
+        uint256 ownerPayment = (_amount * fee) / PRECISION_FACTOR;
+
         uint256 amountToTransfer = _amount - ownerPayment; 
 
         // pay the recipient the excess

@@ -29,6 +29,14 @@ library Events {
      */
     event RevokedWhitelistedOutputToken(address token);
 
+    /**
+     * Emitted when a partner discount is set
+     */
+    event PartnerDiscountSet(address indexed partner, uint256 discount);
+
+    /**
+     * Emitted when a user sets their preferences
+     */
     event PreferencesSet(address indexed msgSender, address token, uint96 slippageAllowed);
 
     /////////////////////
@@ -38,5 +46,5 @@ library Events {
     /**
      * Emitted to pass data from payment function
      */
-    event Payment(address indexed recipient, address indexed tokenAddress, uint256 amountIn, bytes32 indexed data);
+    event Payment(address indexed recipient, address indexed tokenOut, uint256 amountOut, bytes32 indexed data);
 }

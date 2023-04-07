@@ -6,20 +6,9 @@ pragma solidity =0.8.17;
 import {DataTypes} from "../libraries/DataTypes.sol";
 
 interface IKyotoHub {
-    ///////////////////////////
-    ///   Admin Functions   ///
-    ///////////////////////////
-    function addToInputWhitelist(address) external;
-    function addToOutputWhitelist(address) external;
-    function revokeFromInputWhitelist(address) external;
-    function revokeFromOutputWhitelist(address) external;
-    function pause() external;
-    function unpause() external;
-
-    ////////////////////////////////////
-    ///   State Changing Functions   ///
-    ////////////////////////////////////
-
+    //////////////////////////
+    ///   User Functions   ///
+    //////////////////////////
     /**
      * Sets the sender's receiving preferences.
      * Note: slippageAllowed is inversed. For example, 9_900 is 1% slippage
@@ -34,5 +23,18 @@ interface IKyotoHub {
     //////////////////////////
     function isWhitelistedInputToken(address) external view returns (bool);
     function isWhitelistedOutputToken(address) external view returns (bool);
+    function getPartnerDiscount(address) external view returns (uint256);
     function getRecipientPreferences(address _recipient) external view returns (DataTypes.Preferences memory);
+
+    //////////////////////////
+    ///   Admin Functions   ///
+    ///////////////////////////
+    function addToInputWhitelist(address) external;
+    function addToOutputWhitelist(address) external;
+    function revokeFromInputWhitelist(address) external;
+    function revokeFromOutputWhitelist(address) external;
+    function setPartnerDiscount(address, uint256) external;
+    function pause() external;
+    function unpause() external;
+
 }

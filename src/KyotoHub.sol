@@ -12,15 +12,19 @@ import {Events} from "./libraries/Events.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
+// To Do: Add vendor
 contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 public constant MAX_FEE = 500;
     uint256 public constant PRECISION_FACTOR = 10_000;
 
     // mapping for prferences
     mapping(address => DataTypes.Preferences) private recipientPreferences;
     EnumerableSet.AddressSet private whitelistedInputTokens;
     EnumerableSet.AddressSet private whitelistedOutputTokens;
+
+    mapping(address => uint256) public partnerDiscounts;
 
     constructor() Ownable2Step() {}
 
@@ -47,6 +51,19 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     ///     Admin Functions    ///
     //////////////////////////////
 
+    /**
+     * @dev Admin function to set partner discounts
+     * @param _partner the address of the partner
+     * @param _discount the discount 
+     * Requirements:
+     * - '_discount' is not greater than MAX_FEE
+     */
+    function setPartnerDiscount(address _partner, uint256 _discount) external onlyOwner {
+        if (_discount > MAX_FEE) revert Errors.InvalidPartnerDiscount();
+        partnerDiscounts[_partner] = _discount;
+
+        emit Events.PartnerDiscountSet(_partner, _discount);
+    }
     /**
      * @dev Admin function to add a token to the input whitelist
      * @param _token the address of the token
@@ -136,6 +153,14 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      */
     function getWhitelistedOutputTokens() external view returns (address[] memory) {
         return whitelistedOutputTokens.values();
+    }
+
+    /**
+     * @notice returns the partner's discount 
+     * @param _partner the partner's address
+     */
+    function getPartnerDiscount(address _partner) external view returns (uint256) {
+        return partnerDiscounts[_partner];
     }
 
     /**

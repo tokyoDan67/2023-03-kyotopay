@@ -289,7 +289,6 @@ contract PayFunctions is PaymentHelper {
     using SafeERC20 for IERC20;
 
     function setUp() public override {
-        // Call Fork setup
         PaymentHelper.setUp();
     }
 
@@ -1040,8 +1039,16 @@ contract PayFunctions is PaymentHelper {
         assertApproxEqRel((recipientUSDCBalanceAfter - recipientUSDCBalanceBefore), recipientPayment, 0.001e18);
         assertApproxEqRel((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee, 0.001e18);
     }
+}
 
-    function test_ReceivePayment_NoPreferencesSet() public {
+contract ReceiveFunctions is PaymentHelper {
+    using SafeERC20 for IERC20;
+
+    function setUp() public override {
+        PaymentHelper.setUp();
+    }
+
+    function testFork_ReceivePayment_NoPreferencesSet() public {
         DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
             tokenIn: USDC_ADDRESS,
             uniFee: 100,
@@ -1080,7 +1087,7 @@ contract PayFunctions is PaymentHelper {
         assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee); 
     }
 
-    function test_ReceivePayment_SameInputAndOutput() public {
+    function testFork_ReceivePayment_SameInputAndOutput() public {
         DataTypes.Preferences memory _preferences =
         DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
 
@@ -1125,17 +1132,55 @@ contract PayFunctions is PaymentHelper {
         assertEq((disburserUSDCBalanceAfter - disburserUSDCBalanceBefore), adminFee); 
     }
 
-    function test_ReceivePayment_InputUSDC_OutputWETH() public {
+    function testFork_ReceivePayment_InputUSDC_OutputWETH() public {
         DataTypes.ReceiveParams memory params = DataTypes.ReceiveParams({
             tokenIn: USDC_ADDRESS,
-            uniFee: 100,
+            uniFee: 500,
             amountIn: 100_000_000,
             amountOut: 99_000_000,
             deadline: block.timestamp,
             data: bytes32(0) 
-        }); 
+        });
 
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: WETH_ADDRESS, slippageAllowed: 9_900});
 
+        vm.prank(RANDOM_USER);
+        kyotoHub.setPreferences(_preferences);
+
+        /**
+         * Store before balances...
+         */
+        (uint256 userWethBalanceBefore, uint256 disburserWethBalanceBefore, ) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+
+        uint256 userUSDCBalanceBefore = USDC_CONTRACT.balanceOf(RANDOM_USER);
+
+        uint256 usdcToWethConversion = _convertUsdcToWeth(params.amountIn);
+
+        // Adjust for Uniswap fee
+        params.amountOut = (usdcToWethConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = params.amountOut - adminFee;
+
+        vm.startPrank(RANDOM_USER);
+
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_USER, WETH_ADDRESS, params.amountOut, params.data);
+
+        disburser.receivePayment(params);
+
+        vm.stopPrank();
+
+        (uint256 userWethBalanceAfter, uint256 disburserWethBalanceAfter,) =
+            getTokenBalances(WETH_CONTRACT, RANDOM_USER, address(disburser), address(0));
+
+        assertEq((userUSDCBalanceBefore - USDC_CONTRACT.balanceOf(RANDOM_USER)), params.amountIn);
+
+        // Approximately equal within 0.1%
+        assertApproxEqRel((userWethBalanceAfter - userWethBalanceBefore), userPaymentReceived, 0.001e18);
+        assertApproxEqRel((disburserWethBalanceAfter - disburserWethBalanceBefore), adminFee, 0.001e18); 
     }
-
 }

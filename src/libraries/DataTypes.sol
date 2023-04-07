@@ -37,4 +37,11 @@ library DataTypes {
         uint256 deadline;
         bytes32 data;
     }
+
+    struct ReceiveEthParams {
+        uint24 uniFee;
+        uint256 amountOut;
+        uint256 deadline;
+        bytes32 data;
+    }
 }
