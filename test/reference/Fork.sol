@@ -93,9 +93,7 @@ contract Fork is Helper, Test {
             / ((10 ** (WBTC_DECIMALS - USDC_DECIMALS)) * (10 ** btcUSDCDecimals) * (10 ** wbtcBtcConversionDecimals));
     }
 
-    function _convertUsdcToWbtc(uint256 amountIn) internal returns(uint256) {}
-
-    function _wethToUsdcConversion(uint256 amountIn) internal {
+    function _convertWethToUsdc(uint256 _amountIn) internal returns (uint256) {
         (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
 
         // See prior tests to understand math for this conversion.... 

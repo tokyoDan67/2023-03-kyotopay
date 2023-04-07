@@ -465,23 +465,7 @@ contract PayFunctions is PaymentHelper {
         vm.prank(RANDOM_RECIPIENT);
         kyotoHub.setPreferences(preferences);
 
-        // Defined in Fork.sol...
-        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
-
-        // USDC uses 6 decimals
-        // WETH uses 18 decimals
-        // Chainlink's pricefeed uses 8 decimals
-        // However: We need the calculation to end up using the WETH decimals, i.e. 10^18
-
-        // _amountIn = USDC_Amount * 10^6
-        // ethUSDCPrice = ETH_Price * 10^8
-        // expectedWeth = (USDC_Amount * 10^6) * (10^8) * (10^(18-6)) / (ETH_Price * 10^8)
-        // Note: the 10^8s in the nominator and denominator cancel each other out, leaving 10^(18-6) * 10^6 which is just 10^18
-
-        // Therefore: expectedWeth = (_amountIn) * (10^8) * (10^(18-6)) / ethUSDCPrice
-
-        uint256 expectedWeth =
-            (_amountIn * (10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS))) / uint256(ethUSDCPrice);
+        uint256 expectedWeth = _convertUsdcToWeth(_amountIn);
 
         DataTypes.PayParams memory params = DataTypes.PayParams({
             recipient: RANDOM_RECIPIENT,
@@ -518,24 +502,7 @@ contract PayFunctions is PaymentHelper {
         vm.prank(RANDOM_RECIPIENT);
         kyotoHub.setPreferences(_preferences);
 
-        // Defined in Fork.sol...
-        (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
-
-        // USDC uses 6 decimals
-        // WETH uses 18 decimals
-        // Chainlink's pricefeed uses 8 decimals
-        // However: We need the calculation to end up using the USDC decimals, i.e. 10^6
-
-        // _amountIn = WETH_Amount * 10^18
-        // ethUSDCPrice = ETH_Price * 10^8
-        // expectedUSDC = (WETH_Amount * 10^18) * ((ETH_Price * 10^8) * (10**(6-18))) / (10^8)
-        // Algebraically, 10**(6-18) in the numerator can be made 10**(18-6) in the denominator
-        // Note: the 10^8s cancel each other out in the numberator and denominator, leaving (10^18)/(10^(18-6)), which is just 10^6
-
-        // Therefore: expectedUSDC = (_amountIn * ethUSDCPrice) / ((10^8) * (10^(18-6)))
-
-        uint256 expectedUSDC =
-            (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
+        uint256 expectedUSDC = _convertWethToUsdc(_amountIn);
 
         DataTypes.PayEthParams memory params = DataTypes.PayEthParams({
             recipient: RANDOM_RECIPIENT,
@@ -1045,8 +1012,8 @@ contract PayFunctions is PaymentHelper {
 
         uint256 userEthBalanceBefore = RANDOM_USER.balance;
 
-        uint256 wethToUsdcConversion = _wethToUsdcConversion(_amountIn);
-        
+        uint256 wethToUsdcConversion = _convertWethToUsdc(_amountIn);
+
         // Adjust for Uniswap fee
         params.amountOut = params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
 
