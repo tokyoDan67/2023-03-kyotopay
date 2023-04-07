@@ -1014,7 +1014,7 @@ contract PayFunctions is PaymentHelper {
         uint256 wethToUsdcConversion = _convertWethToUsdc(_amountIn);
 
         // Adjust for Uniswap fee
-        params.amountOut = params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+        params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
 
         uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
         uint256 recipientPayment = params.amountOut - adminFee;
@@ -1355,7 +1355,54 @@ contract ReceiveFunctions is PaymentHelper {
     }
 
     function testFork_ReceiveEthPayment_InputWethOutputUsdc() public {
+        // Amount in is 5 ether
+        uint256 _amountIn = 5e18;
+
+        // Set user preferences
+        DataTypes.Preferences memory _preferences =
+            DataTypes.Preferences({tokenAddress: USDC_ADDRESS, slippageAllowed: 9_900});
+
+        vm.prank(RANDOM_USER);
+        kyotoHub.setPreferences(_preferences);
+
+        DataTypes.ReceiveEthParams memory params = DataTypes.ReceiveEthParams({
+            uniFee: 500,
+            amountOut: 0,
+            deadline: block.timestamp,
+            data: bytes32(0) 
+        });
+
+        /**
+         * Store before balances...
+         */
+        (uint256 userUsdcBalanceBefore, uint256 disburserUsdcBalanceBefore, ) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(disburser), address(0));
         
+        uint256 userEthBalanceBefore = address(RANDOM_USER).balance;
+
+        uint256 wethToUsdcConversion = _convertWethToUsdc(_amountIn);
+
+        params.amountOut = (wethToUsdcConversion * (UNISWAP_FEE_PRECISION_FACTOR - params.uniFee))/UNISWAP_FEE_PRECISION_FACTOR;
+
+        vm.startPrank(RANDOM_USER);
+
+        // Unable to accurately predict the amountOut
+        vm.expectEmit(true, true, true, false);
+        emit Events.Payment(RANDOM_USER, USDC_ADDRESS, params.amountOut, params.data);
+
+        disburser.receiveEthPayment{value: _amountIn}(params);
+
+        vm.stopPrank();
+
+        uint256 adminFee = (params.amountOut * FEE) / KYOTOPAY_DECIMALS;
+        uint256 userPaymentReceived = params.amountOut - adminFee;
+
+        (uint256 userUsdcBalanceAfter, uint256 disburserUsdcBalanceAfter,) =
+            getTokenBalances(USDC_CONTRACT, RANDOM_USER, address(disburser), address(0));
+
+        assertEq((userEthBalanceBefore - address(RANDOM_USER).balance), _amountIn, "Wrong ETH Balance");
+        assertApproxEqRel((userUsdcBalanceAfter - userUsdcBalanceBefore), userPaymentReceived, 0.001e18, "Wrong recipient payment");
+        assertApproxEqRel((disburserUsdcBalanceAfter - disburserUsdcBalanceBefore), adminFee, 0.001e18, "Wrong admin fee");
     }
 }
 
