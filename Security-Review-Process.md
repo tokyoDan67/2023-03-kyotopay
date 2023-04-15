@@ -24,13 +24,15 @@ Not great.  The website is: https://kyotopay.com/.
 
 The project enables users to pay other users with a whitelisted input currencies, which are ERC20s.
 The backend then utilizes Uniswap V3 to convert the inputted currency into the user's
-preffered whitelisted output currency.
+preferred whitelisted output currency.
 
 3. What is the code test coverage percentage?
 
-100% of 
+100% 
 
 4. Have you had any audits so far?
+
+None
 
 **Based on the answers we can discuss the effort needed, the payment amount and the timeline.**
 
@@ -46,8 +48,16 @@ After the time agreed upon has passed, the project will receive the security rev
 
 ## Important Off-Topic Questions
 1. Are you okay with me publishing the security review report after you apply fixes?
+
+Yes
+
 2. Are you okay with me being transparent with our work, findings and payment?
+
+Yes
+
 3. What is your preferred communication channel?
+
+Telegram
 
 ## Disclaimer
 
