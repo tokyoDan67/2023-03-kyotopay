@@ -16,20 +16,6 @@ contract Fork is Helper, Test {
     uint256 constant MAINNET_FORK_BLOCK = 16520928;
 
     /**
-     * Goerli
-     */
-    uint256 goerliForkId;
-    string GOERLI_RPC_URL = vm.envString("GOERLI_RPC_URL");
-    uint256 constant GOERLI_FORK_BLOCK = 8404430;
-
-    /**
-     * Polygon
-     */
-    uint256 polygonForkId;
-    string POLYGON_RPC_URL = vm.envString("POLYGON_RPC_URL");
-    uint256 constant POLYGON_FORK_BLOCK = 38712600;
-
-    /**
      * IERC20 Contracts
      */
     IERC20 USDC_CONTRACT = IERC20(USDC_ADDRESS);

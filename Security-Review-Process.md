@@ -4,19 +4,32 @@
 
 1. What is the clear scope (`.sol` files) of the security review?
 
-|   File Name               |     SLOC      |
-| -------------             | ------------- |
-| libraries/DataTypes.sol   |               |
-| libraries/Errors.sol      |               |
-| libraries/Events.sol      |               |
-| interfaces/IDisburser.sol |               |
-| interfaces/IKyotoHub.sol  |               |
-|  Disburser.sol         | Content Cell  |
-|  KyotoHub.sol             | Content Cell  |
-|  Total SLOC               |               | 
+|       File Name           |     SLOC      |
+| -----------------------   | ------------- |
+| base/HubAware.sol         |       10      |
+| base/HubOwnable.sol       |       13      |
+| libraries/DataTypes.sol   |       37      |
+| libraries/Errors.sol      |       14      |
+| libraries/Events.sol      |       10      |
+| interfaces/IDisburser.sol |       7       |
+| interfaces/IKyotoHub.sol  |       16      |
+|  Disburser.sol            |       166     |
+|  KyotoHub.sol             |       75      |
+|   ----------------------  | ------------- |
+|  Total SLOC               |      348      | 
 
 2. Does the project have well written specifications & code documentation?
+
+Not great.  The website is: https://kyotopay.com/.  
+
+The project enables users to pay other users with a whitelisted input currencies, which are ERC20s.
+The backend then utilizes Uniswap V3 to convert the inputted currency into the user's
+preffered whitelisted output currency.
+
 3. What is the code test coverage percentage?
+
+100% of 
+
 4. Have you had any audits so far?
 
 **Based on the answers we can discuss the effort needed, the payment amount and the timeline.**
