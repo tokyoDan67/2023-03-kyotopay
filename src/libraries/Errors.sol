@@ -8,6 +8,7 @@ library Errors {
     //////////////////
     ///   Global   ///
     //////////////////
+
     /**
      * Passed in address is address(0)
      */
@@ -16,6 +17,9 @@ library Errors {
     ////////////////
     ///   Base   ///
     ////////////////
+    /**
+     *  msg.sender is not the hub owner
+     */
     error NotHubOwner();
 
     ////////////////////

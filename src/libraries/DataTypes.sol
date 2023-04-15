@@ -5,7 +5,6 @@ pragma solidity =0.8.17;
 /// Protocol Version 1.1
 
 library DataTypes {
-
     struct Preferences {
         address tokenAddress;
         uint96 slippageAllowed;
@@ -21,7 +20,7 @@ library DataTypes {
         bytes32 data;
     }
 
-    struct PayEthParams{
+    struct PayEthParams {
         address recipient;
         uint24 uniFee;
         uint256 amountOut;

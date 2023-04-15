@@ -9,18 +9,17 @@ import {KyotoHub} from "../../src/KyotoHub.sol";
 import {Fork} from "./Fork.sol";
 
 /**
- * @dev Sets up KyotoHub and Disburser for payment tests.  Deals tokens to RANDOM_USER for tests.  
+ * @dev Sets up KyotoHub and Disburser for payment tests.  Deals tokens to RANDOM_USER for tests.
  * Sets max approvals by RANDOM_USER to the Disburser and KyotoPay contract
  */
 
 abstract contract PaymentHelper is Fork {
     using SafeERC20 for IERC20;
-    
+
     KyotoHub kyotoHub;
     Disburser disburser;
 
     function setUp() public virtual override {
-
         // Call Fork setup
         Fork.setUp();
 
@@ -76,7 +75,6 @@ abstract contract PaymentHelper is Fork {
 }
 
 contract SetUpTest is PaymentHelper {
-
     function setUp() public override {
         PaymentHelper.setUp();
     }

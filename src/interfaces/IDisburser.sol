@@ -38,7 +38,5 @@ interface IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(DataTypes.PayEthParams memory _params)
-        external
-        payable;
+    function payEth(DataTypes.PayEthParams memory _params) external payable;
 }

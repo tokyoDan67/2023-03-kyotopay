@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-/// @title KyotoPay
+/// @title Disburser
 /// Version 1.1
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,12 +14,6 @@ import {Events} from "./libraries/Events.sol";
 import {HubOwnable} from "./base/HubOwnable.sol";
 import {IDisburser} from "./interfaces/IDisburser.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
-
-// To Do:
-//   - Add a receive function
-//   - Add EIP712 signatures
-//   - Update the deadline to be passed in by the frontend
-//   - Add vendor payments
 
 contract Disburser is HubOwnable, Pausable, IDisburser {
     using SafeERC20 for IERC20;
@@ -56,10 +50,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * The msg.sender should receive the input token from the payer before calling this function
      * @param _params the parameters
      */
-    function receivePayment(DataTypes.ReceiveParams memory _params)
-        external
-        whenNotPaused
-    {
+    function receivePayment(DataTypes.ReceiveParams memory _params) external whenNotPaused {
         // Reconstruct params
         DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
             recipient: msg.sender,
@@ -67,7 +58,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
             uniFee: _params.uniFee,
             amountIn: _params.amountIn,
             amountOut: _params.amountOut,
-            deadline: _params.deadline, 
+            deadline: _params.deadline,
             data: _params.data
         });
 
@@ -89,12 +80,12 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         // Reconstruct params
         DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
             recipient: msg.sender,
-            tokenIn: wethAddress, 
+            tokenIn: wethAddress,
             uniFee: _params.uniFee,
             amountIn: msgValue,
             amountOut: _params.amountOut,
             deadline: _params.deadline,
-            data: _params.data 
+            data: _params.data
         });
 
         // Get payer funds from msg.sender
@@ -108,7 +99,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
 
     /**
      * @notice pays a recipient in their preferred token from a given input token
-     * @param _params the parameters 
+     * @param _params the parameters
      * Requirements:
      *  - '_params.recipient' != address(0)
      *  - '_params.tokenIn' is a valid input token
@@ -138,11 +129,7 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      *  - The executed swap will send the recipient more tokens than their slippageAllowed * '_amountOut'
      */
 
-    function payEth(DataTypes.PayEthParams memory _params)
-        external
-        payable
-        whenNotPaused
-    {
+    function payEth(DataTypes.PayEthParams memory _params) external payable whenNotPaused {
         // Cache vars
         uint256 msgValue = msg.value;
         address wethAddress = WETH_ADDRESS;
@@ -150,12 +137,12 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         // Reconstruct params
         DataTypes.PayParams memory paymentParams = DataTypes.PayParams({
             recipient: _params.recipient,
-            tokenIn: wethAddress, 
+            tokenIn: wethAddress,
             uniFee: _params.uniFee,
             amountIn: msgValue,
             amountOut: _params.amountOut,
             deadline: _params.deadline,
-            data: _params.data 
+            data: _params.data
         });
 
         // Validate
@@ -189,7 +176,13 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
         }
 
         uint256 swapOutput = _executeSwap(
-            _params.tokenIn, preferences.tokenAddress, _params.amountIn, _params.amountOut, _params.deadline, _params.uniFee, preferences.slippageAllowed
+            _params.tokenIn,
+            preferences.tokenAddress,
+            _params.amountIn,
+            _params.amountOut,
+            _params.deadline,
+            _params.uniFee,
+            preferences.slippageAllowed
         );
 
         // transfer funds to recipient, pays fee, emits event
@@ -242,12 +235,12 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      */
     function _sendRecipientFunds(address _recipient, address _tokenAddress, uint256 _amount, bytes32 _data) internal {
         uint256 partnerDiscount = KYOTO_HUB.getPartnerDiscount(_recipient);
-        
+
         uint256 fee = partnerDiscount > adminFee ? 0 : adminFee - partnerDiscount;
 
         uint256 ownerPayment = (_amount * fee) / PRECISION_FACTOR;
 
-        uint256 amountToTransfer = _amount - ownerPayment; 
+        uint256 amountToTransfer = _amount - ownerPayment;
 
         // pay the recipient the excess
         IERC20(_tokenAddress).safeTransfer(_recipient, amountToTransfer);
@@ -261,7 +254,10 @@ contract Disburser is HubOwnable, Pausable, IDisburser {
      * They are represented in hundredths of basis points.  I.e. 100 = 0.01%, 500 = 0.05%, etc.
      */
     function _validateInputParams(DataTypes.PayParams memory _params) internal view {
-        if ((_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3_000) && (_params.uniFee != 10_000)) {
+        if (
+            (_params.uniFee != 100) && (_params.uniFee != 500) && (_params.uniFee != 3_000)
+                && (_params.uniFee != 10_000)
+        ) {
             revert Errors.InvalidUniFee();
         }
         if (!(KYOTO_HUB.isWhitelistedInputToken(_params.tokenIn))) revert Errors.InvalidToken();

@@ -36,5 +36,4 @@ interface IKyotoHub {
     function setPartnerDiscount(address, uint256) external;
     function pause() external;
     function unpause() external;
-
 }

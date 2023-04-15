@@ -96,7 +96,7 @@ contract Fork is Helper, Test {
     function _convertWethToUsdc(uint256 _amountIn) internal returns (uint256) {
         (int256 ethUSDCPrice, uint8 ethUSDCDecimals) = getEthToUSDCPriceAndDecimals();
 
-        // See prior tests to understand math for this conversion.... 
+        // See prior tests to understand math for this conversion....
         return (_amountIn * uint256(ethUSDCPrice)) / ((10 ** ethUSDCDecimals) * (10 ** (WETH_DECIMALS - USDC_DECIMALS)));
     }
 

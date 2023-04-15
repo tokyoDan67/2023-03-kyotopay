@@ -12,7 +12,6 @@ import {Events} from "./libraries/Events.sol";
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {IKyotoHub} from "./interfaces/IKyotoHub.sol";
 
-// To Do: Add vendor
 contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -54,7 +53,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     /**
      * @dev Admin function to set partner discounts
      * @param _partner the address of the partner
-     * @param _discount the discount 
+     * @param _discount the discount
      * Requirements:
      * - '_discount' is not greater than MAX_FEE
      */
@@ -71,6 +70,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
      *  - '_token" != address(0)
      *  - msg.sender is the owner
      */
+
     function addToInputWhitelist(address _token) external onlyOwner {
         if (_token == address(0)) revert Errors.ZeroAddress();
 
@@ -156,7 +156,7 @@ contract KyotoHub is IKyotoHub, Pausable, Ownable2Step {
     }
 
     /**
-     * @notice returns the partner's discount 
+     * @notice returns the partner's discount
      * @param _partner the partner's address
      */
     function getPartnerDiscount(address _partner) external view returns (uint256) {
